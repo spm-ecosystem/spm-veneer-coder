@@ -134,6 +134,7 @@ def main(argv=None) -> int:
     parser.add_argument("prompt", nargs="?", help="Direct natural language task prompt for the agent")
     parser.add_argument("-i", "--input", help="Read task description from input text file")
     parser.add_argument("-o", "--output", help="Write final validated .vnr code to output file")
+    parser.add_argument("--html", help="Path to an HTML file to append as structure context")
     parser.add_argument("-m", "--model", default="veneer-coder", help="Ollama model name to target")
     parser.add_argument("--max-retries", type=int, default=3, help="Max self-correction validation passes")
     
@@ -153,7 +154,19 @@ def main(argv=None) -> int:
         parser.print_help()
         return 1
         
-    final_vnr = run_agent(task_prompt, args.model, args.max_retries)
+    html_context = ""
+    if args.html:
+        html_path = Path(args.html)
+        if html_path.exists():
+            html_content = html_path.read_text(encoding="utf-8")
+            html_context = (
+                f"\n\nHere is the target HTML structure for context:\n"
+                f"```html\n{html_content}\n```"
+            )
+        else:
+            print(f"[Warning] HTML file not found: {args.html}", file=sys.stderr)
+            
+    final_vnr = run_agent(task_prompt + html_context, args.model, args.max_retries)
     
     if args.output:
         Path(args.output).write_text(final_vnr, encoding="utf-8")
