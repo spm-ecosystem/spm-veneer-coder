@@ -68,7 +68,7 @@ class TrainingConfig:
 
 @dataclass
 class RunConfig:
-    """Um preset completo de treinamento."""
+    """Completelly training preset."""
     preset_name: str
     description: str = ""
     output_root: str = "outputs"
