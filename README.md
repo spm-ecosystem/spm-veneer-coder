@@ -116,6 +116,47 @@ The scaffolder automatically:
 5. Performs local compilation syntax validation and repeats with error feedback for self-correction.
 6. Saves the compiled `<env_name>.vnr` and `content.css` files, and triggers the final local compile step producing the resolved `manifest.json`.
 
+### 4. Delegation as a Subagent (JSON Interface)
+For programmatic usage by parent agents (like Antigravity or Claude Code) or build orchestration tools, use the JSON-compliant delegation wrapper:
+```bash
+python finetune/subagent_cli.py
+```
+This script expects a JSON payload on stdin (or via `--input-json`), queries Ollama, executes self-correction compilation checks, writes the correct files, and outputs a structured JSON response on stdout.
+
+#### Input JSON Schema
+```json
+{
+  "task": "Reconstruct feed to UiModernGridPage mapping items to UiImageCard",
+  "html_path": "/path/to/page-snapshot.html",
+  "env_dir": "/path/to/spm-qa-test-suite/environments/site-j-stackoverflow"
+}
+```
+
+#### Output JSON Schema (Success)
+```json
+{
+  "status": "success",
+  "vnr_file": "/path/to/spm-qa-test-suite/environments/site-j-stackoverflow/stackoverflow.vnr",
+  "css_file": "/path/to/spm-qa-test-suite/environments/site-j-stackoverflow/content.css",
+  "manifest_file": "/path/to/spm-qa-test-suite/environments/site-j-stackoverflow/manifest.json",
+  "retries_used": 1,
+  "compilation_log": "Compiled manifest.json successfully."
+}
+```
+
+#### Output JSON Schema (Error)
+```json
+{
+  "status": "error",
+  "message": "Max compile self-correction retries reached without success.",
+  "retries_used": 3,
+  "errors": [
+    "Compiler error details...",
+    "Subsequent compilation attempts errors..."
+  ]
+}
+```
+
 ---
 
 ## Adding New Presets
