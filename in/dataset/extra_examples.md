@@ -1,31 +1,27 @@
 # Multi-slot preserve block mapping
 ## User
-Based on the following forum layout HTML, write a reconstruct block targeting `#discussion-thread` that mounts a `UiPostDetails` component and preserves both the reply form and the user profile widget into named slots:
+Based on the following forum layout HTML, write a reconstruct block targeting `#discussion-thread` that mounts a `UiSplitLayout` component and preserves both the reply form and the user profile widget into named slots:
 
 ```html
 <div id="discussion-thread">
-  <div class="legacy-post-meta">
-    <h1>Thread Title</h1>
-  </div>
   <aside id="member-card-widget">
     <h3>Author Profile</h3>
-    <p>User stats...</p>
   </aside>
   <div class="legacy-content">
     Post body content...
   </div>
-  <form id="legacy-comment-editor" action="/submit-comment">
-    <textarea name="comment"></textarea>
-    <button>Submit</button>
-  </form>
+  <form id="legacy-comment-editor" action="/submit-comment"></form>
 </div>
 ```
 ## Assistant
-Here is the Veneer Spec (.vnr) code to reconstruct the discussion area while preserving interactive legacy inputs:
+Here is the Veneer Spec (.vnr) code to reconstruct the discussion area using `UiSplitLayout` while preserving interactive legacy inputs:
 
 ```vnr
-reconstruct "#discussion-thread" -> UiPostDetails {
-    pageTitle: "Discussion Thread";
+reconstruct "#discussion-thread" -> UiSplitLayout {
+    sidebarWidth: "300px";
+    sidebarSide: "right";
+    
+    bind mainHtml: ".legacy-content | html";
     
     preserve {
         commentFormSlot: "#legacy-comment-editor";
@@ -34,35 +30,41 @@ reconstruct "#discussion-thread" -> UiPostDetails {
 }
 ```
 
+---
+
 # String delimiter splitting using the split pipe
 ## User
 Write a Veneer Spec (.vnr) to map a gallery item row where the tag list is extracted from a space-separated data attribute:
 
 ```html
-<div class="gallery-item" data-tags="scenery wallpaper clouds sky green_grass">
-  <a class="preview-link" href="/view/100492">
-    <img src="/thumbs/100492.jpg" alt="Preview" />
+<div class="gallery-item" id="item-100" data-tags="scenery wallpaper clouds sky">
+  <a class="preview-link" href="/view/100">
+    <img src="/thumbs/100.jpg" alt="Preview Image" />
   </a>
 </div>
 ```
 ## Assistant
-You can extract space-separated data tags into a JSON array using the `split` pipe operation. The default behavior of `split` without arguments splits by space:
+You can extract space-separated data tags into a JSON array using the `split` pipe operation, and map the cards using `UiImageCard` child item specifications:
 
 ```vnr
 class GalleryCard {
-    bind tags: "self | attr:data-tags | split";
-    bind viewUrl: "a.preview-link | attr:href";
     bind imageUrl: "img | attr:src";
+    bind linkUrl: "a.preview-link | attr:href";
+    bind title: "img | attr:alt";
+    bind id: "self | attr:id";
+    bind tags: "self | attr:data-tags | split";
 }
 
 reconstruct ".gallery-item-container" -> UiModernGridPage {
     pageTitle: "Wallpaper Gallery";
     
-    child items extends GalleryCard {
+    child items -> UiImageCard extends GalleryCard {
         selector: ".gallery-item";
     }
 }
 ```
+
+---
 
 # Using split with a custom delimiter
 ## User
@@ -82,9 +84,12 @@ class CategoryBreadcrumb {
 }
 ```
 
+---
+
 # Numeric conversions with number and cleanNumber
 ## User
 I have the following item metadata HTML:
+
 ```html
 <div class="meta-row">
   <span class="item-count">Count: 42 items</span>
@@ -104,34 +109,35 @@ class MetadataCard {
 }
 ```
 
+---
+
 # Hierarchical scoping with document scope
 ## User
-Write a `.vnr` spec to replace a sidebar widget with `UiStatsDashboard`. It must grab the user's login name from a top-bar user menu that resides outside the sidebar wrapper.
+Write a `.vnr` spec to replace a sidebar widget with `UiSearchBar`. It must grab the default value from a top-bar display that resides outside the sidebar wrapper.
 
 ```html
 <div id="top-bar">
-  <span class="user-name-display">admin_user</span>
+  <span class="current-tag">landscape</span>
 </div>
-<aside id="legacy-sidebar">
-  <div class="widget-box">
-    <h3>Legacy Widget</h3>
-    <p>Values...</p>
-  </div>
-</aside>
+<aside id="legacy-sidebar"></aside>
 ```
 ## Assistant
 By default, bindings look inside the matched container block. To fetch properties from elements physically outside the matched container, use `scope: "document";`:
 
 ```vnr
-selector "#legacy-sidebar" -> UiStatsDashboard {
+selector "#legacy-sidebar" -> UiSearchBar {
     action: replace;
+    placeholder: "Search...";
+    submitUrl: "/search";
     
-    bind currentUser: {
+    bind defaultValue: {
         scope: "document";
-        selector: "#top-bar span.user-name-display | text";
+        selector: "#top-bar span.current-tag | text";
     }
 }
 ```
+
+---
 
 # URL routing regex configurations
 ## User
@@ -144,12 +150,17 @@ reconstruct "#gallery-feed-wrapper" -> UiModernGridPage {
     urlPattern: R"(\/gallery\/\d+)";
     pageTitle: "Image Gallery Feed";
     
-    child items {
+    child items -> UiImageCard {
         selector: ".thumbnail-card";
         bind imageUrl: "img | attr:src";
+        bind linkUrl: "a | attr:href";
+        bind title: "img | attr:alt";
+        bind id: "self | attr:id";
     }
 }
 ```
+
+---
 
 # Reconstructing a tabular admin dashboard
 ## User
@@ -170,7 +181,7 @@ Map the following table grid structure into a VNR spec targeting `UiTableListPag
 </table>
 ```
 ## Assistant
-Here is the `.vnr` code to reconstruct the HTML data-table into a React-based `UiTableListPage`:
+Here is the `.vnr` code to reconstruct the HTML data-table into a React-based `UiTableListPage`, defining the corresponding column rendering keys:
 
 ```vnr
 class UserRow {
@@ -182,12 +193,19 @@ class UserRow {
 
 reconstruct "table.data-table" -> UiTableListPage {
     pageTitle: "User Accounts Directory";
+    columns: R"([
+      { "key": "name", "header": "User", "type": "link", "urlKey": "profileUrl" },
+      { "key": "role", "header": "Role", "type": "text" },
+      { "key": "lastSeen", "header": "Last Active", "type": "date" }
+    ])";
     
     child tableRows extends UserRow {
         selector: "tr.user-record";
     }
 }
 ```
+
+---
 
 # In-place widget replacements
 ## User
@@ -199,15 +217,18 @@ Write VNR code to replace a legacy video sidebar box with a `UiImageViewer` comp
 </div>
 ```
 ## Assistant
-You can perform in-place replacements using `selector` blocks with `action: replace;`:
+You can perform in-place replacements using `selector` blocks with `action: replace;` and target the real `UiImageViewer` properties:
 
 ```vnr
 selector ".video-preview-widget" -> UiImageViewer {
     action: replace;
-    imageSrc: "self | attr:data-poster-url";
-    videoId: "self | attr:data-video-id | number";
+    fit: "cover";
+    bind src: "self | attr:data-poster-url";
+    bind alt: "self | attr:data-video-id";
 }
 ```
+
+---
 
 # Setting up theme design tokens
 ## User
@@ -229,6 +250,8 @@ theme "ThemeDarkDefault" {
     }
 }
 ```
+
+---
 
 # Complex child class inheritance mapping
 ## User

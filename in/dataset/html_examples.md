@@ -4,24 +4,20 @@ Based on the following HTML snippet of a blog listing page, write a Veneer Spec 
 
 ```html
 <section id="posts-feed">
-  <div class="k-post-card" data-category="Technology">
+  <div class="k-post-card" id="post-101">
     <div class="thumb-container">
       <img src="/assets/covers/unsloth-guide.png" alt="Unsloth Guide Cover" />
     </div>
     <div class="post-details">
-      <span class="meta-date">2026-08-21</span>
       <h2 class="post-title"><a href="/posts/unsloth-guide-3-13">Fine-tuning Qwen on Python 3.13</a></h2>
-      <p class="summary-text">A complete guide to training lightweight local models...</p>
     </div>
   </div>
-  <div class="k-post-card" data-category="Design">
+  <div class="k-post-card" id="post-102">
     <div class="thumb-container">
       <img src="/assets/covers/veneer-layout.png" alt="Veneer Layout Spec Cover" />
     </div>
     <div class="post-details">
-      <span class="meta-date">2026-08-20</span>
       <h2 class="post-title"><a href="/posts/veneer-layout-declarations">Declarative layout overrides with VNR</a></h2>
-      <p class="summary-text">How we bypassed extension rendering overhead...</p>
     </div>
   </div>
 </section>
@@ -32,20 +28,21 @@ Here is the Veneer Spec (.vnr) code to reconstruct the blog grid into a `UiModer
 ```vnr
 class BlogCard {
     bind title: "h2.post-title a | text";
-    bind url: "h2.post-title a | attr:href";
+    bind linkUrl: "h2.post-title a | attr:href";
     bind imageUrl: ".thumb-container img | attr:src";
-    bind category: "self | attr:data-category";
-    bind publishedAt: "span.meta-date | text";
+    bind id: "self | attr:id";
 }
 
 reconstruct "#posts-feed" -> UiModernGridPage {
     pageTitle: "Blog Feed";
     
-    child items extends BlogCard {
+    child items -> UiImageCard extends BlogCard {
         selector: ".k-post-card";
     }
 }
 ```
+
+---
 
 # Mapping an e-commerce catalog from HTML
 ## User
@@ -72,25 +69,31 @@ Write a Veneer Spec (.vnr) to reconstruct this search results listing into a mod
 </div>
 ```
 ## Assistant
-You can reconstruct this product listing using `UiTableListPage`. We will clean the currency prefix and thousands separator using the `cleanNumber` pipe operation:
+You can reconstruct this product listing using `UiTableListPage`. We will clean the currency prefix and thousands separator using the `cleanNumber` pipe operation, and specify the column schema structure:
 
 ```vnr
 class ProductRow {
     bind title: "a.item-link | text";
     bind url: "a.item-link | attr:href";
-    bind imageUrl: "img.lazy-load | attr:src";
     bind price: "span.price-label | text | cleanNumber";
     bind status: "span.badge-status | text";
 }
 
 reconstruct ".listing-container" -> UiTableListPage {
     pageTitle: "Search Results";
+    columns: R"([
+      { "key": "title", "header": "Product", "type": "link", "urlKey": "url" },
+      { "key": "price", "header": "Price", "type": "currency" },
+      { "key": "status", "header": "Status", "type": "badge", "badgeStyleKey": "status" }
+    ])";
     
     child tableRows extends ProductRow {
         selector: ".search-item-row";
     }
 }
 ```
+
+---
 
 # Replacing header elements in HTML
 ## User
@@ -114,11 +117,12 @@ Here is the Veneer Spec block to replace the legacy header with `UiNavHeader`:
 ```vnr
 selector "#global-header" -> UiNavHeader {
     action: replace;
-    logoUrl: ".header-logo-wrap img | attr:src";
-    logoHref: ".header-logo-wrap a | attr:href";
+    siteName: "Company Hub";
+    logoHref: "/dashboard";
+    
+    bind logoUrl: ".header-logo-wrap img | attr:src";
     
     child primaryLinks {
-        scope: "container";
         selector: "nav.navigation-links a.nav-item";
         bind label: "self | text";
         bind url: "self | attr:href";

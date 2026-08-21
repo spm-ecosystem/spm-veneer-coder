@@ -6,6 +6,7 @@ Write a `.vnr` selector block that replaces this featured media block with `UiIm
 <div class="featured-media-block" data-media-id="778">
   <img class="featured-img" src="/media/778-large.jpg" alt="Autumn Collection" />
   <p class="media-caption">New Autumn Collection</p>
+  <a class="view-details" href="/gallery/autumn">View Details</a>
 </div>
 ```
 ## Assistant
@@ -14,58 +15,61 @@ Here is the Veneer Spec code to replace the featured media block in place with `
 ```vnr
 selector ".featured-media-block" -> UiImageCard {
     action: replace;
+    width: "360px";
+    aspectRatio: "video";
+    showTitle: true;
+    
     bind imageUrl: "img.featured-img | attr:src";
-    bind caption: "p.media-caption | text";
-    bind mediaId: "self | attr:data-media-id | number";
+    bind linkUrl: "a.view-details | attr:href";
+    bind title: "p.media-caption | text";
+    bind id: "self | attr:data-media-id";
 }
 ```
 
+---
+
 # Reconstructing an admin overview into UiDashboardPage
 ## User
-Map this support overview HTML into a `UiDashboardPage`, with metric tiles and a recent activity feed:
+Map this support overview HTML into a `UiDashboardPage` containing modern action cards:
 
 ```html
 <div id="admin-overview">
-  <div class="metric-tile">
-    <span class="metric-label">Open Tickets</span>
-    <span class="metric-value">37</span>
+  <div class="admin-option-card">
+    <h3>System Configuration</h3>
+    <p class="desc">Adjust site variables and settings...</p>
+    <a href="/admin/config">Edit Config</a>
   </div>
-  <div class="metric-tile">
-    <span class="metric-label">Avg Response Time</span>
-    <span class="metric-value">2.4h</span>
-  </div>
-  <div class="activity-row">
-    <span class="activity-actor">jsmith</span>
-    <span class="activity-action">closed ticket #1042</span>
-    <time class="activity-time" datetime="2026-08-21T09:15:00Z"></time>
+  <div class="admin-option-card">
+    <h3>User Moderation</h3>
+    <p class="desc">Ban, flag, or approve registrations...</p>
+    <a href="/admin/users">Moderate</a>
   </div>
 </div>
 ```
 ## Assistant
-Here is the Veneer Spec code to reconstruct the overview into `UiDashboardPage`, using two separate `child` blocks for the metrics and the activity feed:
+Here is the Veneer Spec code to reconstruct the overview into `UiDashboardPage`, mapping the option containers using the `cards` child block:
 
 ```vnr
 reconstruct "#admin-overview" -> UiDashboardPage {
     pageTitle: "Support Overview";
+    subTitle: "Select an option below to manage settings and moderation.";
+    height: "100vh";
     
-    child metrics {
-        selector: ".metric-tile";
-        bind label: ".metric-label | text";
-        bind value: ".metric-value | text";
-    }
-    
-    child recentActivity {
-        selector: ".activity-row";
-        bind actor: ".activity-actor | text";
-        bind action: ".activity-action | text";
-        bind timestamp: ".activity-time | attr:datetime";
+    child cards {
+        selector: ".admin-option-card";
+        bind title: "h3 | text";
+        bind description: "p.desc | text";
+        bind url: "a | attr:href";
+        bind urlLabel: "a | text";
     }
 }
 ```
 
+---
+
 # Reconstructing a two-column layout with UiSplitLayout
 ## User
-This article page has a main column and a legacy sidebar widget I need to keep alive. Map it to `UiSplitLayout`:
+This article page has a main column and a legacy links sidebar widget I need to keep. Map it to `UiSplitLayout`:
 
 ```html
 <div id="article-layout">
@@ -75,62 +79,79 @@ This article page has a main column and a legacy sidebar widget I need to keep a
   </div>
   <aside id="legacy-related-links-widget">
     <h3>Related Links</h3>
+    <a href="/related-1">First Link</a>
+    <a href="/related-2">Second Link</a>
   </aside>
 </div>
 ```
 ## Assistant
-Here is the Veneer Spec code to reconstruct the two-column article layout into `UiSplitLayout`, preserving the legacy sidebar widget in its own slot:
+Here is the Veneer Spec code to reconstruct the two-column layout using `UiSplitLayout`. We bind the main content to `mainHtml` and extract the sidebar links into the `buttons` child block:
 
 ```vnr
 reconstruct "#article-layout" -> UiSplitLayout {
-    pageTitle: "Article";
+    sidebarWidth: "300px";
+    sidebarSide: "right";
     
-    bind headline: "h1.headline | text";
-    bind bodyHtml: ".body-copy | html";
+    bind mainHtml: ".main-column | html";
     
-    preserve {
-        relatedLinksSlot: "#legacy-related-links-widget";
+    child buttons {
+        selector: "#legacy-related-links-widget a";
+        bind label: "self | text";
+        bind url: "self | attr:href";
     }
 }
 ```
 
-# Replacing a scrollable legacy list with UiScrollPanel
+---
+
+# Replacing a legacy changelog list with UiCommentListPage
 ## User
-Write a `.vnr` selector block that replaces this changelog list with `UiScrollPanel`:
+Write a `.vnr` selector block that replaces this changelog list with `UiCommentListPage`:
 
 ```html
 <div class="changelog-box" id="release-notes-list">
-  <div class="changelog-entry">
+  <div class="changelog-entry" id="v240">
     <span class="version-tag">v2.4.0</span>
+    <span class="author">admin</span>
     <p class="entry-text">Added dark mode support.</p>
   </div>
-  <div class="changelog-entry">
+  <div class="changelog-entry" id="v231">
     <span class="version-tag">v2.3.1</span>
+    <span class="author">dev</span>
     <p class="entry-text">Fixed pagination bug on mobile.</p>
   </div>
 </div>
 ```
 ## Assistant
-Here is the Veneer Spec code to replace the changelog box with a scrollable `UiScrollPanel`, mapping each entry as a child item:
+Here is the Veneer Spec code to replace the changelog box with `UiCommentListPage`, mapping each release note entry to a comment thread object:
 
 ```vnr
-selector "#release-notes-list" -> UiScrollPanel {
-    action: replace;
+reconstruct "#release-notes-list" -> UiCommentListPage {
+    pageTitle: "Release Notes";
+    height: "calc(100vh - 80px)";
     
-    child entries {
+    child threads {
         selector: ".changelog-entry";
-        bind version: ".version-tag | text";
-        bind description: ".entry-text | text";
+        bind id: "self | attr:id";
+        bind postDate: "span.version-tag | text";
+        bind postUser: "span.author | text";
+        
+        child comments {
+            selector: "p.entry-text";
+            bind body: "self | text";
+        }
     }
 }
 ```
+
+---
 
 # Replacing an inline status label with UiTagBadge
 ## User
 Write a `.vnr` selector block that swaps this order status flag for `UiTagBadge`:
 
 ```html
-<span class="order-status-flag" data-status="shipped">Shipped</span>
+<span class="order-status-flag" data-count="15" data-url="/orders/shipped">Shipped</span>
 ```
 ## Assistant
 Here is the Veneer Spec code to replace the status flag in place with `UiTagBadge`:
@@ -139,9 +160,12 @@ Here is the Veneer Spec code to replace the status flag in place with `UiTagBadg
 selector ".order-status-flag" -> UiTagBadge {
     action: replace;
     bind label: "self | text";
-    bind status: "self | attr:data-status";
+    bind count: "self | attr:data-count | number";
+    bind href: "self | attr:data-url";
 }
 ```
+
+---
 
 # Reconstructing a landing page into UiHeroLanding
 ## User
@@ -168,6 +192,7 @@ class HeroNavLink {
 }
 
 reconstruct "#homepage-hero" -> UiHeroLanding {
+    siteName: "Landing Page";
     tagline: "Build Faster, Ship Sooner";
     subtext: "The toolkit for modern engineering teams.";
     ctaLabel: "Get Started";
@@ -179,34 +204,41 @@ reconstruct "#homepage-hero" -> UiHeroLanding {
 }
 ```
 
-# Mapping a used-goods listing page into UiItemDetailsPage
+---
+
+# Mapping a details container using UiSplitLayout
 ## User
-Reconstruct this book listing into `UiItemDetailsPage`, converting the price to a clean number and preserving the seller contact form:
+Reconstruct this book detail block into a `UiSplitLayout`, binding the title to `mainHtml` and details to `statisticsHtml`:
 
 ```html
 <div id="book-listing">
   <h1 class="book-title">The Pragmatic Programmer</h1>
-  <span class="book-price">$ 34.50</span>
   <div class="book-condition">Condition: Like New</div>
-  <form id="legacy-seller-contact-form" action="/contact-seller"></form>
+  <form id="legacy-seller-contact-form" action="/contact-seller">
+    <input type="submit" value="Contact Seller" />
+  </form>
 </div>
 ```
 ## Assistant
-Here is the Veneer Spec code to reconstruct the listing into `UiItemDetailsPage`, cleaning the price with `cleanNumber` and preserving the seller contact form:
+Here is the Veneer Spec code to reconstruct the container into `UiSplitLayout`, extracting the contact form into a sidebar button:
 
 ```vnr
-reconstruct "#book-listing" -> UiItemDetailsPage {
-    pageTitle: "Book Details";
+reconstruct "#book-listing" -> UiSplitLayout {
+    sidebarWidth: "320px";
+    sidebarSide: "right";
     
-    bind title: "h1.book-title | text";
-    bind price: ".book-price | text | cleanNumber";
-    bind condition: ".book-condition | text";
+    bind mainHtml: "h1.book-title | html";
+    bind statisticsHtml: ".book-condition | text";
     
-    preserve {
-        contactSellerSlot: "#legacy-seller-contact-form";
+    child buttons {
+        selector: "#legacy-seller-contact-form";
+        bind label: "input[type='submit'] | attr:value";
+        bind url: "self | attr:action";
     }
 }
 ```
+
+---
 
 # Reconstructing forum navigation into UiPaginationBar with document scope
 ## User
@@ -222,13 +254,13 @@ The results and the pager live in separate containers on this forum page. Map th
 </div>
 ```
 ## Assistant
-Since the pager sits outside the matched `#forum-results` container, use `scope: "document"` on the `child` block so its selector queries the whole page instead of just the container's descendants:
+Since the pager sits outside the matched `#forum-results` container, use `scope: "document"` on the `child pageLinks` block so its selector queries the whole page instead of just the container's descendants:
 
 ```vnr
 reconstruct "#forum-results" -> UiPaginationBar {
-    pageTitle: "Forum Results";
+    paramName: "page";
     
-    child pages {
+    child pageLinks {
         scope: "document";
         selector: "#global-forum-pager a.pager-link";
         bind label: "self | text";
@@ -237,65 +269,83 @@ reconstruct "#forum-results" -> UiPaginationBar {
 }
 ```
 
-# Reconstructing a Q&A post page into UiPostDetails with plain children
+---
+
+# Reconstructing a Q&A post page into UiCommentListPage
 ## User
-Map this question-and-answers page into `UiPostDetails`, with the answers as a plain child list (no legacy widgets need to be preserved here):
+Map this question-and-answers page into `UiCommentListPage`, with the answers as replies:
 
 ```html
-<div id="question-detail">
+<div id="question-detail" data-id="q-101">
   <h1 class="question-title">How do I debounce an input in React?</h1>
-  <div class="question-body">I want to delay firing a search request...</div>
+  <span class="author">Alice</span>
+  <span class="date">2026-08-21</span>
   <div class="answer-row">
+    <span class="answer-author">Bob</span>
+    <span class="answer-date">2026-08-21</span>
     <div class="answer-body">Use a useEffect with a setTimeout cleanup.</div>
-    <span class="answer-votes">14</span>
   </div>
 </div>
 ```
 ## Assistant
-Here is the Veneer Spec code to reconstruct the question page into `UiPostDetails`, with the answers mapped as a `child` array:
+Here is the Veneer Spec code to reconstruct the question page into `UiCommentListPage`, with the answers mapped as comment replies:
 
 ```vnr
-reconstruct "#question-detail" -> UiPostDetails {
+reconstruct "#question-detail" -> UiCommentListPage {
     pageTitle: "Question Detail";
     
-    bind title: "h1.question-title | text";
-    bind bodyHtml: ".question-body | html";
-    
-    child answers {
-        selector: ".answer-row";
-        bind body: ".answer-body | text";
-        bind votes: ".answer-votes | text | number";
+    child threads {
+        selector: "self";
+        bind id: "self | attr:data-id";
+        bind postDate: "span.date | text";
+        bind postUser: "span.author | text";
+        
+        child comments {
+            selector: ".answer-row";
+            bind author: "span.answer-author | text";
+            bind date: "span.answer-date | text";
+            bind body: ".answer-body | text";
+        }
     }
 }
 ```
 
-# Reconstructing a metrics sidebar into UiStatsDashboard with currency cleanup
+---
+
+# Reconstructing a metrics sidebar into UiStatsDashboard
 ## User
-Map this revenue widget into `UiStatsDashboard`, cleaning the currency-formatted values:
+Map this revenue widget into `UiStatsDashboard`, setting up leaderboard sections:
 
 ```html
 <aside id="revenue-widget">
+  <h3>Financial Metrics</h3>
   <div class="metric-tile">
     <span class="metric-label">MRR</span>
     <span class="metric-value">$ 48,200.00</span>
   </div>
   <div class="metric-tile">
-    <span class="metric-label">Churn</span>
-    <span class="metric-value">1.8%</span>
+    <span class="metric-label">ARR</span>
+    <span class="metric-value">$ 578,400.00</span>
   </div>
 </aside>
 ```
 ## Assistant
-Here is the Veneer Spec code to reconstruct the revenue widget into `UiStatsDashboard`, using `cleanNumber` to strip the currency symbol and thousands separator:
+Here is the Veneer Spec code to reconstruct the revenue widget into `UiStatsDashboard`, using the `sections` and nested `items` layout schema:
 
 ```vnr
 reconstruct "#revenue-widget" -> UiStatsDashboard {
-    pageTitle: "Revenue";
+    pageTitle: "Financial Stats";
+    dateRangeText: "This Month";
     
-    child metrics {
-        selector: ".metric-tile";
-        bind label: ".metric-label | text";
-        bind value: ".metric-value | text | cleanNumber";
+    child sections {
+        selector: "self";
+        bind title: "h3 | text";
+        
+        child items {
+            selector: ".metric-tile";
+            bind name: ".metric-label | text";
+            bind amount: ".metric-value | text | cleanNumber";
+        }
     }
 }
 ```

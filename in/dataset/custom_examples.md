@@ -17,16 +17,16 @@ theme "ModernDark" {
 }
 ```
 
+---
+
 # Scoped class directive mapping
 ## User
 How do I map a list of items using a scoped class inside a table list page?
 ## Assistant
-To map a list of items (like a row in a table or a card in a grid) to relative child properties, define a `class` block specifying a custom class name, define its `scope` selector, and then extend that class in a `child` block inside your `reconstruct` or `selector` declaration.
+To map a list of items (like a row in a table) to relative child properties, define a `class` block, and then extend that class in a `child` block inside your `reconstruct` or `selector` declaration, and configure the table column mappings:
 
-Here is an example:
 ```vnr
 class GithubIssueItem {
-    scope: ".js-issue-row";
     bind issueNumber: "span.opened-by | text | cleanNumber";
     bind title: "a.markdown-title | text";
     bind commentsCount: "a.Link--muted | text | number";
@@ -34,6 +34,11 @@ class GithubIssueItem {
 
 reconstruct "#issues-container" -> UiTableListPage {
     pageTitle: "Repository Issues";
+    columns: R"([
+      { "key": "issueNumber", "header": "Issue #", "type": "number" },
+      { "key": "title", "header": "Title", "type": "text" },
+      { "key": "commentsCount", "header": "Comments", "type": "number" }
+    ])";
     
     child tableRows extends GithubIssueItem {
         selector: ".js-issue-row";

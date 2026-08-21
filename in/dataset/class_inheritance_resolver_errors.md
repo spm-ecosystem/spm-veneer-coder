@@ -12,7 +12,7 @@ Based on this audit log markup, write a `.vnr` reconstruct targeting `UiTableLis
 </table>
 ```
 ## Assistant
-When classes extend each other across multiple levels, the resolver walks the whole chain and merges every ancestor's bindings into the final class — `TrackedClickable` here ends up with `isDisabled`, `url`, and `trackingId` all merged together:
+When classes extend each other across multiple levels, the resolver merges every ancestor's bindings into the final class:
 
 ```vnr
 class Interactive {
@@ -29,6 +29,11 @@ class TrackedClickable extends Clickable {
 
 reconstruct ".audit-table" -> UiTableListPage {
     pageTitle: "Audit Log";
+    columns: R"([
+      { "key": "isDisabled", "header": "Disabled", "type": "checkbox" },
+      { "key": "url", "header": "Link URL", "type": "link", "urlKey": "url" },
+      { "key": "trackingId", "header": "Track ID", "type": "text" }
+    ])";
     
     child tableRows extends TrackedClickable {
         selector: "tr.audit-row a.audit-link";
@@ -36,27 +41,32 @@ reconstruct ".audit-table" -> UiTableListPage {
 }
 ```
 
+---
+
 # Overriding a parent class binding for lazy-loaded images
 ## User
 Write VNR classes for this deal card, where the real image lives in `data-src` instead of `src` because it's lazy-loaded:
 
 ```html
-<div class="deal-card">
+<div class="deal-card" id="deal-1">
   <span class="title">Weekend Flash Sale</span>
   <img data-src="/img/deals/flash-sale.jpg" src="/img/placeholder.png" />
+  <a class="buy-link" href="/buy/1">Buy Now</a>
 </div>
 ```
 ## Assistant
-Declare a generic base class first, then extend it with a specialized class that overrides just the `image` binding — the child class's declaration wins over the parent's when both define the same property:
+Declare a generic base class first, then extend it with a specialized class that overrides just the `imageUrl` binding:
 
 ```vnr
 class GenericCard {
     bind title: ".title | text";
-    bind image: "img | attr:src";
+    bind imageUrl: "img | attr:src";
+    bind linkUrl: "a.buy-link | attr:href";
+    bind id: "self | attr:id";
 }
 
 class LazyLoadedCard extends GenericCard {
-    bind image: "img | attr:data-src";
+    bind imageUrl: "img | attr:data-src";
 }
 
 reconstruct "#deals-feed" -> UiModernGridPage {
@@ -67,6 +77,8 @@ reconstruct "#deals-feed" -> UiModernGridPage {
     }
 }
 ```
+
+---
 
 # Class used purely for document scope, extended elsewhere
 ## User
@@ -82,7 +94,7 @@ This legal center page has its footer links physically outside the main containe
 </footer>
 ```
 ## Assistant
-Declare a base link class, then a thin subclass that only adds `scope: "document";` — any `child` that extends the subclass automatically inherits document-wide scoping without repeating it:
+Declare a base link class, then a thin subclass that adds `scope: "document";` so any `child` that extends the subclass automatically inherits document-wide scoping:
 
 ```vnr
 class BaseLink {
@@ -95,20 +107,23 @@ class DocumentScopedLink extends BaseLink {
 }
 
 reconstruct "#policy-hub" -> UiSplitLayout {
-    pageTitle: "Legal Center";
-    bind headline: "h1.hub-title | text";
+    sidebarWidth: "280px";
+    sidebarSide: "right";
+    bind mainHtml: "h1.hub-title | html";
     
-    child legalLinks extends DocumentScopedLink {
+    child buttons extends DocumentScopedLink {
         selector: "#site-footer a.legal-link";
     }
 }
 ```
 
+---
+
 # Sibling classes with a consistent shape but no inheritance
 ## User
-I have two different podcast-participant blocks with almost identical fields, but slightly different selectors and one extra field on the guest. Should I use inheritance, or just declare them separately?
+I have two different podcast-participant blocks with almost identical fields, but slightly different selectors. Should I use inheritance, or just declare them separately?
 ## Assistant
-When the field shapes only coincidentally overlap rather than representing a true "is-a" relationship, it's usually clearer to declare independent sibling classes rather than forcing an `extends` relationship between them — inheritance is for genuine specialization, not just for avoiding a bit of duplication:
+When the field shapes only coincidentally overlap rather than representing a true "is-a" relationship, it's usually clearer to declare independent sibling classes rather than forcing an `extends` relationship between them:
 
 ```vnr
 class EpisodeHost {
@@ -125,6 +140,8 @@ class EpisodeGuest {
 }
 ```
 
+---
+
 # Circular inheritance compile error
 ## User
 Why does this fail to compile?
@@ -139,7 +156,7 @@ class B extends A {
 }
 ```
 ## Assistant
-The problem: `A` extends `B`, and `B` extends `A` — the resolver detects this as circular inheritance (`A -> B -> A`) while building the ancestry graph, which it can never fully resolve, so it fails at compile time. Break the cycle by having both extend a shared, non-circular base instead:
+The resolver detects this as circular inheritance (`A -> B -> A`) while building the ancestry graph and fails at compile time. Break the cycle by having both extend a shared, non-circular base instead:
 
 ```vnr
 class Base {
@@ -156,6 +173,8 @@ class B extends Base {
 }
 ```
 
+---
+
 # Referencing an undeclared class error
 ## User
 Why does this fail?
@@ -166,7 +185,7 @@ class Derived extends MissingBase {
 }
 ```
 ## Assistant
-The problem: `MissingBase` is never declared anywhere the compiler can find it — in single-file linter mode it must live in the same file or a sibling file in the same directory; in a full workspace compile it must be declared somewhere in the compiled tree. Declare the missing base class before (or after — order doesn't matter in a full compile) the class that extends it:
+The problem: `MissingBase` is never declared. Declare the missing base class in your workspace files:
 
 ```vnr
 class MissingBase {
@@ -178,6 +197,8 @@ class Derived extends MissingBase {
 }
 ```
 
+---
+
 # Forgetting the required action key on a selector block
 ## User
 Why does this fail to compile?
@@ -188,14 +209,16 @@ selector "#promo-ribbon" -> UiTagBadge {
 }
 ```
 ## Assistant
-The problem: every `selector` block requires an `action` key (`hide` or `replace`) — without it, the compiler doesn't know whether to just hide the legacy element or mount a component in its place. Add the missing key:
+Every `selector` block requires an `action` key (`hide` or `replace`) so the compiler knows whether to just hide the legacy element or mount a component in its place:
 
 ```vnr
 selector "#promo-ribbon" -> UiTagBadge {
     action: replace;
-    label: "Limited Time";
+    bind label: "self | text";
 }
 ```
+
+---
 
 # Using child outside of a selector or reconstruct block
 ## User
@@ -207,15 +230,21 @@ child orphanList {
 }
 ```
 ## Assistant
-The problem: `child` is only valid when nested inside a `selector` or `reconstruct` block — it has no meaning at the top level of a file, since it needs a parent component to attach its resulting array prop to. Nest it inside a block that mounts a component:
+The `child` block is only valid when nested inside a `selector` or `reconstruct` block:
 
 ```vnr
-reconstruct "#page" -> UiGridPage {
-    child orphanList {
+reconstruct "#page" -> UiModernGridPage {
+    child items -> UiImageCard {
         selector: ".x";
+        bind imageUrl: "img | attr:src";
+        bind linkUrl: "a | attr:href";
+        bind title: "a | text";
+        bind id: "self | attr:id";
     }
 }
 ```
+
+---
 
 # Typo'd base extractor name
 ## User
@@ -225,39 +254,55 @@ Why does this fail to compile?
 bind title: "h2 | txt";
 ```
 ## Assistant
-The problem: `txt` is not a recognized base extractor — the correct name is `text`. Veneer Spec only recognizes the seven documented base extractors (`text`, `html`, `attr:<name>`, `hrefOrOnclick`, `nextSiblingText`, `hiddenInputs`, `selector`), so any other name fails to compile:
+Veneer Spec only recognizes the seven documented base extractors (`text`, `html`, `attr:<name>`, `hrefOrOnclick`, `nextSiblingText`, `hiddenInputs`, `selector`), so any other name fails to compile:
 
 ```vnr
 bind title: "h2 | text";
 ```
+
+---
 
 # Duplicate child name at the same nesting level
 ## User
 Why does this fail?
 
 ```vnr
-reconstruct "#page" -> UiDashboardPage {
-    child items {
+reconstruct "#page" -> UiNavHeader {
+    siteName: "Site";
+    
+    child primaryLinks {
         selector: ".a";
+        bind label: "self | text";
+        bind url: "self | attr:href";
     }
-    child items {
+    child primaryLinks {
         selector: ".b";
+        bind label: "self | text";
+        bind url: "self | attr:href";
     }
 }
 ```
 ## Assistant
-The problem: two `child` blocks share the name `items` at the same nesting level under the same parent, which creates a naming conflict — each child list needs a distinct prop name so the resolver knows which array each one maps to. Give each list its own name:
+Two `child` blocks share the same name `primaryLinks` under the same parent. Give each child block a distinct prop name:
 
 ```vnr
-reconstruct "#page" -> UiDashboardPage {
-    child primaryItems {
+reconstruct "#page" -> UiNavHeader {
+    siteName: "Site";
+    
+    child primaryLinks {
         selector: ".a";
+        bind label: "self | text";
+        bind url: "self | attr:href";
     }
-    child secondaryItems {
+    child secondaryLinks {
         selector: ".b";
+        bind label: "self | text";
+        bind url: "self | attr:href";
     }
 }
 ```
+
+---
 
 # Raw string delimiter collision in a urlPattern regex
 ## User
@@ -267,22 +312,27 @@ Why does this `urlPattern` fail to compile correctly?
 urlPattern: R"(\)")";
 ```
 ## Assistant
-The problem: the regex content itself contains the default raw-string terminator sequence `)"`, which closes the literal early and leaves trailing garbage the parser can't make sense of. Use a custom delimiter so the closing sequence becomes unambiguous:
+The regex content contains the default raw-string terminator sequence `)"`, closing the literal early. Use a custom tag delimiter:
 
 ```vnr
 urlPattern: R"tag(\)")tag";
 ```
 
+---
+
 # Silent runtime failure from a mismatched preserve slot name
 ## User
-My `preserve` block compiled without any errors, but the legacy chat widget just disappeared — it never reappeared anywhere on the page. What went wrong?
+My `preserve` block compiled without any errors, but the legacy chat widget just disappeared. What went wrong?
 
 ```vnr
-reconstruct "#support-center" -> UiItemDetailsPage {
+reconstruct "#support-center" -> UiSplitLayout {
+    sidebarWidth: "280px";
+    sidebarSide: "right";
+    
     preserve {
         liveChatSlot: "#zendesk-chat-widget";
     }
 }
 ```
 ## Assistant
-This is a runtime issue, not a compile error — the compiler has no way to check `preserve` slot names against the target component's actual internals. At runtime, the layout looks for a host element with `id="liveChatSlot-container"` inside `UiItemDetailsPage` to reparent the preserved node into; if that container doesn't exist in the component, the legacy node is still removed from its original spot but is never reattached anywhere visible. Always confirm the slot name matches a container the target component actually renders before relying on `preserve` for that widget.
+This is a runtime layout matching issue. At runtime, the layout looks for a slot element with a matching name inside `UiSplitLayout` to reparent the preserved node into. If that container doesn't exist in the React component code, the legacy node is removed from its original spot but is never reattached.

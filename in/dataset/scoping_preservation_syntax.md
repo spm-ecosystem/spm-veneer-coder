@@ -4,61 +4,76 @@ Write a Veneer Spec (.vnr) that reconstructs a mobile-only category drawer, but 
 
 ```html
 <nav id="mobile-category-drawer" class="mobile-only">
-  <a class="drawer-link" href="/category/electronics">Electronics</a>
-  <a class="drawer-link" href="/category/home-garden">Home &amp; Garden</a>
-  <a class="drawer-link" href="/category/toys">Toys</a>
+  <a class="drawer-link" id="cat-1" data-img="/thumbs/cat1.jpg" href="/category/electronics">Electronics</a>
+  <a class="drawer-link" id="cat-2" data-img="/thumbs/cat2.jpg" href="/category/home-garden">Home &amp; Garden</a>
 </nav>
 ```
 ## Assistant
-You can gate a `reconstruct` block so it only mounts under a specific viewport size using the `mediaQuery` property, set to a standard CSS media query string:
+You can gate a `reconstruct` block so it only mounts under a specific viewport size using the `mediaQuery` property, and map the drawer links directly to `UiImageCard` components using the inline component child syntax:
 
 ```vnr
-reconstruct "#mobile-category-drawer" -> UiGridPage {
+reconstruct "#mobile-category-drawer" -> UiModernGridPage {
     mediaQuery: "(max-width: 768px)";
     pageTitle: "Categories";
     
-    child categoryLinks {
+    child items -> UiImageCard {
         selector: "a.drawer-link";
-        bind label: "self | text";
-        bind url: "self | attr:href";
+        width: "140px";
+        aspectRatio: "square";
+        
+        bind imageUrl: "self | attr:data-img";
+        bind linkUrl: "self | attr:href";
+        bind title: "self | text";
+        bind id: "self | attr:id";
     }
 }
 ```
 
+---
+
 # Nested child mapping for threaded discussion replies
 ## User
-Based on this two-level comment thread HTML, write a `.vnr` reconstruct targeting `UiPostDetails` that maps top-level comments and their nested replies:
+Based on this two-level comment thread HTML, write a `.vnr` reconstruct targeting `UiCommentListPage` that maps top-level comments and their nested replies:
 
 ```html
 <div id="post-thread">
   <div class="comment depth-0" data-comment-id="501">
-    <p class="comment-text">Great write-up, thanks for sharing!</p>
+    <span class="user">Alice</span>
+    <span class="date">2026-08-21</span>
+    <a class="permalink" href="/comments/501">Link</a>
     <div class="comment depth-1" data-comment-id="502">
+      <span class="user">Bob</span>
+      <span class="date">2026-08-21</span>
       <p class="comment-text">Agreed, very clear explanation.</p>
     </div>
   </div>
 </div>
 ```
 ## Assistant
-You can nest `child` blocks inside one another to map recursive structures like threaded replies — each level of nesting produces its own array-valued prop scoped to its parent:
+You can nest `child` blocks inside one another to map recursive structures like threaded replies in `UiCommentListPage`:
 
 ```vnr
-reconstruct "#post-thread" -> UiPostDetails {
+reconstruct "#post-thread" -> UiCommentListPage {
     pageTitle: "Post Thread";
     
-    child topLevelComments {
+    child threads {
         selector: ".comment.depth-0";
-        bind body: "p.comment-text | text";
-        bind commentId: "self | attr:data-comment-id";
+        bind id: "self | attr:data-comment-id";
+        bind postUser: "span.user | text";
+        bind postDate: "span.date | text";
+        bind postUrl: "a.permalink | attr:href";
         
-        child replies {
+        child comments {
             selector: ".comment.depth-1";
+            bind author: "span.user | text";
+            bind date: "span.date | text";
             bind body: "p.comment-text | text";
-            bind commentId: "self | attr:data-comment-id";
         }
     }
 }
 ```
+
+---
 
 # Capturing hidden CSRF fields while replacing a search form
 ## User
@@ -85,12 +100,14 @@ selector "#legacy-quick-search" -> UiSearchBar {
 }
 ```
 
+---
+
 # Resolving onclick-based navigation with hrefOrOnclick
 ## User
 This product tile navigates through an inline `onclick` handler instead of a real link — how do I bind its destination URL?
 
 ```html
-<div class="product-tile" data-sku="SKU-3391">
+<div class="product-tile" id="tile-3391">
   <img src="/img/sku-3391.jpg" alt="Wireless Charger" />
   <div class="tile-caption" onclick="window.location='/product/wireless-charger'">
     Wireless Charger
@@ -101,65 +118,68 @@ This product tile navigates through an inline `onclick` handler instead of a rea
 The `hrefOrOnclick` extractor normalizes both a real `href` attribute and an inline `onclick` navigation handler into a single destination string, so you don't need separate logic for each case:
 
 ```vnr
-selector ".product-tile" -> UiImageCard {
-    action: replace;
+child items -> UiImageCard {
+    selector: ".product-tile";
+    width: "160px";
+    aspectRatio: "square";
+    
     bind imageUrl: "img | attr:src";
-    bind caption: ".tile-caption | text";
+    bind title: ".tile-caption | text";
     bind linkUrl: ".tile-caption | hrefOrOnclick";
-    bind sku: "self | attr:data-sku";
+    bind id: "self | attr:id";
 }
 ```
 
+---
+
 # Reading adjacent sibling values with nextSiblingText
 ## User
-Write a Veneer Spec reconstruct for a status panel where each metric's value sits in a plain `<span>` right after its label, rather than nested inside it:
+Write a Veneer Spec reconstruct for a dashboard card list where each card's description sits in a plain element right after its title link:
 
 ```html
-<div id="status-panel">
-  <div class="stat-row">
-    <span class="stat-label">Uptime</span>
-    <span>99.98%</span>
-  </div>
-  <div class="stat-row">
-    <span class="stat-label">Active Users</span>
-    <span>18,204</span>
+<div id="settings-menu">
+  <div class="menu-item">
+    <a class="item-link" href="/settings/profile">Profile Info</a>
+    <p>Manage username, emails, and phone numbers...</p>
   </div>
 </div>
 ```
 ## Assistant
-When a label and its value are adjacent siblings instead of being nested together, match the label element and pipe through `nextSiblingText` to grab the following element's text content:
+When a title and its description are adjacent siblings instead of being nested together, match the title link and pipe through `nextSiblingText` to grab the following element's text content:
 
 ```vnr
-reconstruct "#status-panel" -> UiStatsDashboard {
-    pageTitle: "System Status";
+reconstruct "#settings-menu" -> UiDashboardPage {
+    pageTitle: "Settings";
     
-    child metrics {
-        selector: ".stat-row";
-        bind label: ".stat-label | text";
-        bind value: ".stat-label | nextSiblingText";
+    child cards {
+        selector: ".menu-item";
+        bind title: "a.item-link | text";
+        bind url: "a.item-link | attr:href";
+        bind description: "a.item-link | nextSiblingText";
     }
 }
 ```
 
+---
+
 # Self-referential selector for anchor tracking in pagination links
 ## User
-I want each pagination link to also expose its own unique selector string, for a scroll-restore feature. Here's the markup:
+I want each pagination link to also expose its own unique selector string. Here's the markup:
 
 ```html
 <nav id="results-pager">
   <a class="page-link" href="/search?page=1">1</a>
   <a class="page-link" href="/search?page=2">2</a>
-  <a class="page-link" href="/search?page=3">3</a>
 </nav>
 ```
 ## Assistant
-The `selector` base extractor, applied to `self`, generates a unique CSS selector string for the matched element itself — useful for features like scroll-position restoration that need to re-locate the original node later:
+The `selector` base extractor, applied to `self`, generates a unique CSS selector string for the matched element itself:
 
 ```vnr
 reconstruct "#results-pager" -> UiPaginationBar {
-    pageTitle: "Search Results";
+    paramName: "page";
     
-    child pages {
+    child pageLinks {
         selector: "a.page-link";
         bind label: "self | text";
         bind url: "self | attr:href";
@@ -168,27 +188,28 @@ reconstruct "#results-pager" -> UiPaginationBar {
 }
 ```
 
+---
+
 # Preserving multiple legacy widgets in a single reconstruct
 ## User
-Map this item page into `UiItemDetailsPage`, but keep both the legacy Q&A widget and the legacy shipping calculator alive and interactive:
+Map this item page into `UiSplitLayout`, but keep both the legacy Q&A widget and the legacy shipping calculator alive:
 
 ```html
 <div id="item-page">
-  <h1 class="item-name">Trail Running Shoes</h1>
   <div class="item-desc">Lightweight shoes built for rough terrain.</div>
   <div id="legacy-qna-widget">...</div>
   <div id="legacy-shipping-calc">...</div>
 </div>
 ```
 ## Assistant
-You can preserve as many legacy widgets as needed in one `preserve` block — just add one named slot per widget:
+You can preserve as many legacy widgets as needed in one `preserve` block under `UiSplitLayout`:
 
 ```vnr
-reconstruct "#item-page" -> UiItemDetailsPage {
-    pageTitle: "Item Details";
+reconstruct "#item-page" -> UiSplitLayout {
+    sidebarWidth: "280px";
+    sidebarSide: "right";
     
-    bind title: "h1.item-name | text";
-    bind description: ".item-desc | text";
+    bind mainHtml: ".item-desc | html";
     
     preserve {
         qnaSlot: "#legacy-qna-widget";
@@ -196,6 +217,8 @@ reconstruct "#item-page" -> UiItemDetailsPage {
     }
 }
 ```
+
+---
 
 # Fixing a missing semicolon compile error
 ## User
@@ -217,11 +240,13 @@ selector "#footer-links" -> UiNavHeader {
 }
 ```
 
+---
+
 # Duplicate theme block compile error across files
 ## User
 I have `theme "First" { variables {} }` in one `.vnr` file and `theme "Second" { variables {} }` in another file in the same project. The compile fails — why, and how do I fix it?
 ## Assistant
-A Veneer Spec project may only declare a single `theme` block across the entire compiled workspace, even if the two declarations live in different files — the compiler treats it as one global project-wide theme, not a per-file setting. Consolidate both into one declaration:
+A Veneer Spec project may only declare a single `theme` block across the entire compiled workspace. Consolidate both into one declaration:
 
 ```vnr
 // theme.vnr — single, consolidated theme declaration for the whole workspace
@@ -235,19 +260,19 @@ theme "StorefrontDefault" {
 }
 ```
 
-# Static JSON array prop via raw string for grid tag groups
+---
+
+# Static configuration option for grid layouts
 ## User
-How do I pass a static list of filter tag groups (Category, Brand, Price) as a prop on a grid reconstruct?
+How do I pass a static configuration to a reconstructed modern grid page?
 ## Assistant
-Wrap the JSON array in a raw string literal so it doesn't need any backslash or quote escaping, then assign it directly to the static prop:
+You can set options like `mobileColumns` directly in the reconstruct block:
 
 ```vnr
-reconstruct "#catalog-grid" -> UiGridPage {
+reconstruct "#catalog-grid" -> UiModernGridPage {
     pageTitle: "Catalog";
-    tagGroups: R"([
-      { "title": "Category", "typeKey": "category" },
-      { "title": "Brand", "typeKey": "brand" },
-      { "title": "Price", "typeKey": "price" }
-    ])";
+    showSearch: true;
+    searchPlaceholder: "Search catalog...";
+    mobileColumns: 3;
 }
 ```
