@@ -1,0 +1,27 @@
+# Python virtual environment
+venv/
+.venv/
+env/
+
+# Python compiled files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Training outputs and checkpoints
+outputs/
+outputs_*/
+
+# Unsloth caches
+unsloth_compiled_cache/
+.cache/
+huggingface/
+
+# Compiled GGUF/model weights
+veneer_qwen_gguf/
+veneer_qwen_gguf_gguf/
+*.gguf
+*.bin
+*.pt
+*.safetensors
