@@ -76,6 +76,35 @@ python finetune/train.py --stress-test --stress-requests 100 --stress-workers 10
 
 ---
 
+## Exposing as a Local Subagent (Ollama + Self-Correction)
+
+You can run the fine-tuned model locally via **Ollama** and wrap it in a self-correcting compiler subagent CLI that can be easily integrated into any workspace or automation script.
+
+### 1. Registering the Model in Ollama
+Run the following commands to build the model in Ollama from the compiled GGUF weights:
+```bash
+cd veneer_qwen_gguf_gguf
+ollama create veneer-coder -f Modelfile
+```
+
+### 2. Invoking the Subagent
+Use the provided `finetune/agent.py` script to generate Veneer Spec code. The script:
+1. Queries the local `veneer-coder` Ollama model.
+2. Extracts the generated code.
+3. Automatically runs compilation checks using `spm compile`.
+4. If a compiler error is found, it feeds the diagnostics back to the LLM to **auto-correct the code** (up to 3 validation passes).
+5. Outputs only validated, compile-passing `.vnr` code.
+
+```bash
+# Direct task description via arguments
+python finetune/agent.py "Reconstruct the forum feed: map #forum-posts -> UiTableListPage"
+
+# Reading from stdin and saving the validated result to a file
+echo "Create a search form replacement for #searchform -> UiSearchBar" | python finetune/agent.py -o search.vnr
+```
+
+---
+
 ## Adding New Presets
 
 To create a new training profile:
