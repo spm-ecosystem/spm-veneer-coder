@@ -12,13 +12,26 @@ import argparse
 import json
 import re
 import subprocess
+import shutil
 import sys
 import tempfile
 import urllib.request
 from pathlib import Path
 
 OLLAMA_URL = "http://localhost:11434/api/generate"
-SPM_CLI_PATH = "/home/watashi/Projects/spm-cli/spm"
+
+
+def resolve_spm_cli() -> str:
+    path_lookup = shutil.which("spm")
+    if path_lookup:
+        return path_lookup
+    sibling_path = Path(__file__).resolve().parent.parent.parent / "spm-cli/spm"
+    if sibling_path.exists():
+        return str(sibling_path)
+    return "spm"
+
+
+SPM_CLI_PATH = resolve_spm_cli()
 
 
 def query_ollama(prompt: str, model: str) -> str:
