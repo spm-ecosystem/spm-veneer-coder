@@ -171,6 +171,58 @@ def run_training(cfg: RunConfig, run_dir: Path) -> None:
         json.dump(metadata, f, indent=2, ensure_ascii=False)
 
 
+def parse_markdown_dataset_file(file_path: Path) -> list[list[dict]]:
+    """
+    Parses a markdown file containing multi-turn user/assistant conversations.
+    Format:
+    # Topic Title
+    ## User
+    Prompt...
+    ## Assistant
+    Response...
+    """
+    with open(file_path, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+
+    conversations = []
+    current_convo = []
+    current_role = None
+    current_content = []
+
+    def flush_message():
+        nonlocal current_role, current_content
+        if current_role and current_content:
+            current_convo.append({
+                "role": current_role,
+                "content": "".join(current_content).strip()
+            })
+            current_content = []
+
+    for line in lines:
+        if line.startswith("## User"):
+            flush_message()
+            current_role = "user"
+        elif line.startswith("## Assistant"):
+            flush_message()
+            current_role = "assistant"
+        elif line.startswith("# ") and not line.startswith("## "):
+            # Main heading starts a new conversation block
+            flush_message()
+            if current_convo:
+                conversations.append(current_convo)
+                current_convo = []
+            current_role = None
+        else:
+            if current_role:
+                current_content.append(line)
+
+    flush_message()
+    if current_convo:
+        conversations.append(current_convo)
+
+    return conversations
+
+
 def run_dataset_build() -> None:
     src_file = WORKSPACE_ROOT / "in/veneer-spec-reference.md"
     dest_file = WORKSPACE_ROOT / "dataset.jsonl"
@@ -227,18 +279,40 @@ def run_dataset_build() -> None:
             pending_context = pending_context[-6:]
         i += 1
 
-    print(f"[Dataset Compiler] Extracted {len(blocks)} Veneer Spec code blocks")
+    print(f"[Dataset Compiler] Extracted {len(blocks)} Veneer Spec reference blocks")
 
     system_prompt = (
         "You are an expert assistant for Veneer Spec (.vnr), the declarative "
         "layout-override DSL compiled by spm-cli for the Site Package Manager "
         "(SPM) ecosystem. You write correct, idiomatic .vnr source, explain "
-        "what existing .vnr code does, and help debug compiler errors."
+        "what existing .vnr code does, and help debug compiler errors.\n\n"
+        "Authoritative list of valid React components you can target:\n"
+        "- UiNavHeader\n"
+        "- UiSearchBar\n"
+        "- UiTableListPage\n"
+        "- UiImageCard\n"
+        "- UiDashboardPage\n"
+        "- UiModernGridPage\n"
+        "- UiPaginationBar\n"
+        "- UiPostDetails\n"
+        "- UiTagBadge\n"
+        "- UiSplitLayout\n"
+        "- UiImageViewer\n"
+        "- UiScrollPanel\n"
+        "- UiStatsDashboard\n"
+        "- UiGridPage\n"
+        "- UiHeroLanding\n"
+        "- UiItemDetailsPage\n\n"
+        "CRITICAL RULE: Do not use or suggest any other component names (do not invent components)."
     )
-    examples = []
+    
+    dataset_records = []  # list of tuples: (sort_key, example_dict)
 
-    def add(messages):
-        examples.append({"messages": [{"role": "system", "content": system_prompt}] + messages})
+    def add_example(sort_key: str, messages: list[dict]):
+        dataset_records.append((
+            sort_key,
+            {"messages": [{"role": "system", "content": system_prompt}] + messages}
+        ))
 
     explain_templates = [
         "Explain what the following Veneer Spec (.vnr) code does:\n\n```vnr\n{code}\n```",
@@ -259,7 +333,8 @@ def run_dataset_build() -> None:
         c = re.sub(r"\s+", " ", c)
         return c
 
-    for b in blocks:
+    # Process Reference Spec Blocks
+    for idx, b in enumerate(blocks):
         code = b["code"]
         if not code.strip():
             continue
@@ -269,6 +344,7 @@ def run_dataset_build() -> None:
         ctx = clean_ctx(b["context"])
         raw_heading = b["h3"] or b["h2"]
         heading = re.sub(r"^\d+(\.\d+)*\s+", "", raw_heading).strip()
+        safe_heading = re.sub(r"[^a-zA-Z0-9_]+", "_", heading).strip("_").lower()
 
         # 1. Explanations
         explanation = (
@@ -280,25 +356,29 @@ def run_dataset_build() -> None:
             "target `manifest.json`, following the rules for this construct described "
             "in the Veneer Spec language reference."
         )
-        explain_tpls = random.sample(explain_templates, k=2)
-        for tpl in explain_tpls:
+        for t_idx, tpl in enumerate(explain_templates[:2]):  # limit to keep dataset size balanced
             user_msg = tpl.format(code=code)
-            add([
-                {"role": "user", "content": user_msg},
-                {"role": "assistant", "content": explanation},
-            ])
+            add_example(
+                f"ref_01_explain::{safe_heading}::{idx:04d}::tpl{t_idx}",
+                [
+                    {"role": "user", "content": user_msg},
+                    {"role": "assistant", "content": explanation},
+                ]
+            )
 
         # 2. Code Generation
         if ctx and len(ctx) > 25:
             ctx_lower = ctx[0].lower() + ctx[1:] if ctx else ctx
-            gen_tpls = random.sample(generate_templates, k=2)
             assistant_msg = f"```vnr\n{code}\n```"
-            for tpl in gen_tpls:
+            for t_idx, tpl in enumerate(generate_templates[:2]):
                 user_msg = tpl.format(ctx=ctx, ctx_lower=ctx_lower)
-                add([
-                    {"role": "user", "content": user_msg},
-                    {"role": "assistant", "content": assistant_msg},
-                ])
+                add_example(
+                    f"ref_02_gen::{safe_heading}::{idx:04d}::tpl{t_idx}",
+                    [
+                        {"role": "user", "content": user_msg},
+                        {"role": "assistant", "content": assistant_msg},
+                    ]
+                )
 
         # 3. Code Completion
         code_lines = code.split("\n")
@@ -310,17 +390,20 @@ def run_dataset_build() -> None:
                 f"the `{heading}` construct:\n\n```vnr\n{partial}\n...\n```"
             )
             assistant_msg = f"```vnr\n{code}\n```"
-            add([
-                {"role": "user", "content": user_msg},
-                {"role": "assistant", "content": assistant_msg},
-            ])
+            add_example(
+                f"ref_03_complete::{safe_heading}::{idx:04d}",
+                [
+                    {"role": "user", "content": user_msg},
+                    {"role": "assistant", "content": assistant_msg},
+                ]
+            )
 
     # 4. Error/Debugging Examples
     err_section_match = text.split("## 17. Common Errors, Anti-Patterns & Fixes")
     if len(err_section_match) > 1:
         err_section = err_section_match[1].split("## 18.")[0]
         subsections = re.split(r"(?=^### 17\.\d)", err_section, flags=re.M)
-        for sub in subsections:
+        for idx, sub in enumerate(subsections):
             sub_blocks = re.findall(r"```vnr\n(.*?)\n```", sub, re.S)
             bad = next((c for c in sub_blocks if "❌" in c), None)
             good = next((c for c in sub_blocks if "✅" in c), None)
@@ -335,10 +418,13 @@ def run_dataset_build() -> None:
             assistant_msg = (
                 f"The problem: {err_desc}.\n\nHere is the corrected version:\n\n```vnr\n{good}\n```"
             )
-            add([
-                {"role": "user", "content": user_msg},
-                {"role": "assistant", "content": assistant_msg},
-            ])
+            add_example(
+                f"ref_04_err::{idx:04d}",
+                [
+                    {"role": "user", "content": user_msg},
+                    {"role": "assistant", "content": assistant_msg},
+                ]
+            )
 
     # 5. Concept Q&A Pairs
     qa_pairs = [
@@ -454,19 +540,35 @@ def run_dataset_build() -> None:
          "IDs are not protected this way and should be reviewed if string-preservation matters."),
     ]
 
-    for q, a in qa_pairs:
-        add([
-            {"role": "user", "content": q},
-            {"role": "assistant", "content": a},
-        ])
+    for idx, (q, a) in enumerate(qa_pairs):
+        add_example(
+            f"ref_05_qa::{idx:04d}",
+            [
+                {"role": "user", "content": q},
+                {"role": "assistant", "content": a},
+            ]
+        )
 
-    # Shuffle for better general training
-    random.seed(42)
-    random.shuffle(examples)
+    # Process Custom Markdown Datasets recursively
+    custom_dir = WORKSPACE_ROOT / "in/dataset"
+    if custom_dir.exists():
+        print(f"[Dataset Compiler] Scanning for custom markdown datasets in {custom_dir}")
+        for file_path in sorted(custom_dir.glob("**/*.md")):
+            relative_path = file_path.relative_to(custom_dir)
+            conversations = parse_markdown_dataset_file(file_path)
+            print(f"[Dataset Compiler] File: {relative_path} — parsed {len(conversations)} custom conversations")
+            for c_idx, convo in enumerate(conversations):
+                add_example(
+                    f"custom::{relative_path}::{c_idx:06d}",
+                    convo
+                )
 
-    print(f"[Dataset Compiler] Compiling {len(examples)} instruction-tuning examples...")
+    # Sort stably by key to ensure clean git diffs (reproducible output)
+    dataset_records.sort(key=lambda item: item[0])
+    
+    print(f"[Dataset Compiler] Compiled {len(dataset_records)} instruction-tuning examples")
     with open(dest_file, "w", encoding="utf-8") as f:
-        for ex in examples:
+        for _, ex in dataset_records:
             f.write(json.dumps(ex, ensure_ascii=False) + "\n")
 
     print(f"[Dataset Compiler] Successfully wrote dataset -> {dest_file}")
