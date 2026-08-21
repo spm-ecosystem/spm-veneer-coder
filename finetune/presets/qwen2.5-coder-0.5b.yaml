@@ -1,4 +1,4 @@
-description: "Qwen2.5-Coder 0.5B — modelo pequeno, treino rápido, bom pra iterar"
+description: "Qwen2.5-Coder 0.5B — small model, fast training, good for quick iteration"
 output_root: outputs
 
 model:

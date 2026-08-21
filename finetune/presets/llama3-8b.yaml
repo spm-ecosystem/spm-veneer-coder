@@ -1,4 +1,4 @@
-description: "Llama-3 8B (4bit) — modelo maior, mais capacidade, treino mais lento"
+description: "Llama-3 8B (4bit) — larger model, more capacity, slower training"
 output_root: outputs
 
 model:

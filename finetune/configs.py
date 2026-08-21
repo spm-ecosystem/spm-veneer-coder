@@ -1,9 +1,9 @@
 """
-Schema de configuração para os treinamentos.
+Configuration schema for training profiles.
 
-Cada preset (em presets/*.yaml) é validado contra este schema. Isso evita
-o problema do script original: chaves erradas, faltando, ou digitadas
-diferente em cada cópia do arquivo.
+Each preset (under presets/*.yaml) is validated against this schema. This prevents
+common errors found in hand-written training scripts such as incorrect, missing,
+or inconsistently spelled configuration keys.
 """
 from __future__ import annotations
 
@@ -46,8 +46,8 @@ class DatasetConfig:
     messages_field: str = "messages"
     num_proc: int = 2
     packing: bool = False
-    # mapping opcional, só usado se o dataset NÃO for já {"role","content"}
-    # ex: {"from": "role", "value": "content"} para schema ShareGPT
+    # Optional mapping, only used if the dataset is not already in {"role", "content"} format
+    # e.g., {"from": "role", "value": "content"} for ShareGPT schema
     field_mapping: Optional[dict] = None
 
 
@@ -105,15 +105,15 @@ class RunConfig:
         for dotted_key, value in overrides.items():
             if "." not in dotted_key:
                 raise ValueError(
-                    f"Override inválido '{dotted_key}': use 'secao.campo=valor' "
-                    f"(ex: training.max_steps=200)"
+                    f"Invalid override '{dotted_key}': use 'section.field=value' "
+                    f"(e.g. training.max_steps=200)"
                 )
             section, field_name = dotted_key.split(".", 1)
             target = getattr(new, section, None)
             if target is None:
-                raise ValueError(f"Seção desconhecida: '{section}'")
+                raise ValueError(f"Unknown configuration section: '{section}'")
             if not hasattr(target, field_name):
-                raise ValueError(f"Campo desconhecido: '{section}.{field_name}'")
+                raise ValueError(f"Unknown configuration field: '{section}.{field_name}'")
             current_value = getattr(target, field_name)
             cast_value = _cast_like(value, current_value)
             setattr(target, field_name, cast_value)
@@ -121,7 +121,7 @@ class RunConfig:
 
 
 def _cast_like(value: Any, reference: Any) -> Any:
-    """Converte string de CLI pro mesmo tipo do valor atual (int/float/bool/etc)."""
+    """Converts a CLI string parameter to the same type as the reference value (int/float/bool/etc.)."""
     if not isinstance(value, str):
         return value
     if isinstance(reference, bool):

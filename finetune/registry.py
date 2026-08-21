@@ -1,9 +1,9 @@
 """
-Registro de presets: cada arquivo .yaml em presets/ vira um preset
-selecionável por nome (o nome do arquivo, sem extensão).
+Preset Registry: each .yaml file under presets/ becomes a selectable preset
+by name (the filename, without extension).
 
-Adicionar um preset novo = adicionar um .yaml novo. Não precisa tocar
-em código Python.
+To add a new preset, create a new .yaml file. There is no need to modify
+any Python code.
 """
 from __future__ import annotations
 
@@ -23,10 +23,10 @@ def list_presets() -> list[str]:
 def load_preset(name: str) -> RunConfig:
     path = PRESETS_DIR / f"{name}.yaml"
     if not path.exists():
-        available = ", ".join(list_presets()) or "(nenhum preset encontrado)"
+        available = ", ".join(list_presets()) or "(no presets found)"
         raise FileNotFoundError(
-            f"Preset '{name}' não existe em {PRESETS_DIR}.\n"
-            f"Presets disponíveis: {available}"
+            f"Preset '{name}' does not exist in {PRESETS_DIR}.\n"
+            f"Available presets: {available}"
         )
     with open(path, "r", encoding="utf-8") as f:
         data = yaml.safe_load(f) or {}
