@@ -103,6 +103,19 @@ python finetune/agent.py "Reconstruct the forum feed: map #forum-posts -> UiTabl
 echo "Create a search form replacement for #searchform -> UiSearchBar" | python finetune/agent.py -o search.vnr
 ```
 
+### 3. Automated QA Environment Scaffolding
+To completely scaffold a QA testing environment (generating the `<env>.vnr`, `content.css`, and compiled `manifest.json` from its local `task.md` and `page-snapshot.html` files), run the environment scaffolder:
+```bash
+python finetune/scaffold_env.py /home/watashi/Projects/spm-qa-test-suite/environments/site-j-stackoverflow
+```
+The scaffolder automatically:
+1. Locates the task brief (`task.md`) and page snapshot HTML in the target folder.
+2. Formulates a prompt combining the instructions and raw HTML structure.
+3. Queries the local `veneer-coder` model.
+4. Extracts both VNR and CSS outputs.
+5. Performs local compilation syntax validation and repeats with error feedback for self-correction.
+6. Saves the compiled `<env_name>.vnr` and `content.css` files, and triggers the final local compile step producing the resolved `manifest.json`.
+
 ---
 
 ## Adding New Presets
