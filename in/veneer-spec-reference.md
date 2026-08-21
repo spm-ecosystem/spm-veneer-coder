@@ -10,7 +10,7 @@
 > **Important note on scope**: This file documents the **Veneer Spec language** itself (lexing,
 > parsing, class resolution, emission — everything `spm-cli` compiles) in depth, since that is
 > what is described in the `spm-cli` repository docs. It does **not** invent prop schemas for
-> individual React components (`UiGridPage`, `UiNavHeader`, `UiSearchBar`, etc.) beyond what is
+> individual React components (`UiModernGridPage`, `UiNavHeader`, `UiSearchBar`, etc.) beyond what is
 > already demonstrated in `spm-cli`'s own docs — the authoritative prop lists for those live in
 > `spm-components/docs`, which could not be crawled directly (GitHub blocks automated access to
 > that repository's file-tree view, and the docs aren't otherwise indexed). Section 12
@@ -72,7 +72,7 @@ exists purely to make steps 1–4 easier to author and validate.
 | Token category   | Examples                                              | Notes |
 |-------------------|-------------------------------------------------------|-------|
 | Keywords          | `theme`, `class`, `extends`, `selector`, `reconstruct`, `child`, `bind`, `preserve`, `scope`, `variables`, `customStyles` | Case-sensitive, lowercase only. |
-| Identifiers       | `PrimaryLink`, `UiGridPage`, `items`, `pageLinks`     | Used for class names, component names, child/prop names. |
+| Identifiers       | `PrimaryLink`, `UiModernGridPage`, `items`, `pageLinks`     | Used for class names, component names, child/prop names. |
 | Arrow operator    | `->`                                                  | Links a `selector`/`reconstruct` target to a component name. |
 | String literal    | `"Search…"`, `"#gallery"`                              | Standard double-quoted string; supports normal escaping (`\"`, `\\`). |
 | Raw string literal| `R"(...)"`, `` R"delim(...)delim" ``                    | See [Section 13](#13-raw-string-literals--pattern-library). |
@@ -233,7 +233,7 @@ Useful for preserving CSRF tokens or hidden form state when a form is being repl
 component but still needs to submit compatible payloads server-side.
 
 ```vnr
-selector "#login-form" -> UiLoginForm {
+selector "#login-form" -> UiSearchBar {
     action: replace;
     bind csrfFields: "self | hiddenInputs";
     // -> '[{"name":"csrf_token","value":"9f2a..."},{"name":"redirect","value":"/home"}]'
@@ -442,7 +442,7 @@ class ForumPostAuthor {
 ### 5.6 Real usage — extending a class inside a `child` block
 
 ```vnr
-reconstruct "#thread" -> UiThreadPage {
+reconstruct "#thread" -> UiCommentListPage {
     child replies extends CommentAuthor {
         selector: ".reply";
         bind body: ".reply-body | html";
@@ -512,7 +512,7 @@ selector ".search-box" -> UiSearchBar {
 ### 6.4 Replace with a mix of static props and `bind`
 
 ```vnr
-selector "#account-widget" -> UiAccountMenu {
+selector "#account-widget" -> UiNavHeader {
     action: replace;
     loginUrl: "https://example.com/login";
     logoutUrl: "https://example.com/logout";
@@ -530,7 +530,7 @@ selector "#top-nav" -> UiNavHeader {
     logoHref: "https://example.com/";
 }
 
-selector "#footer-links" -> UiFooter {
+selector "#footer-links" -> UiNavHeader {
     action: replace;
     bind columns: "self | attr:data-footer-json";
 }
@@ -543,7 +543,7 @@ selector ".legacy-breadcrumbs" {
 ### 6.6 Component with a large static JSON array prop, via raw strings
 
 ```vnr
-selector "#quick-nav" -> UiQuickNav {
+selector "#quick-nav" -> UiNavHeader {
     action: replace;
     items: R"([
       { "icon": "home", "label": "Home", "url": "/" },
@@ -588,7 +588,7 @@ selector "header.site-header" -> UiNavHeader {
 ### 7.1 Minimal reconstruct (no constraints)
 
 ```vnr
-reconstruct "#app-root" -> UiHomePage {
+reconstruct "#app-root" -> UiHeroLanding {
     pageTitle: "Home";
 }
 ```
@@ -596,7 +596,7 @@ reconstruct "#app-root" -> UiHomePage {
 ### 7.2 Reconstruct constrained by `urlPattern` (plain substring)
 
 ```vnr
-reconstruct "#listings" -> UiGridPage {
+reconstruct "#listings" -> UiModernGridPage {
     urlPattern: "type=listing";
     pageTitle: "All Listings";
 }
@@ -614,7 +614,7 @@ reconstruct "#home" -> UiHeroLanding {
 ### 7.4 Reconstruct with `mediaQuery` gating (mobile-only mount)
 
 ```vnr
-reconstruct "#mobile-nav-drawer" -> UiMobileDrawer {
+reconstruct "#mobile-nav-drawer" -> UiNavHeader {
     mediaQuery: "(max-width: 768px)";
     pageTitle: "Menu";
 }
@@ -623,7 +623,7 @@ reconstruct "#mobile-nav-drawer" -> UiMobileDrawer {
 ### 7.5 Reconstruct with static + dynamic props + one `child`
 
 ```vnr
-reconstruct "#directory" -> UiDirectoryPage {
+reconstruct "#directory" -> UiTableListPage {
     urlPattern: "page=directory";
     pageTitle: "Business Directory";
     resultsPerPage: 24;
@@ -644,7 +644,7 @@ reconstruct "#directory" -> UiDirectoryPage {
 ### 7.6 Reconstruct with multiple `child` blocks
 
 ```vnr
-reconstruct "#forum-index" -> UiForumIndexPage {
+reconstruct "#forum-index" -> UiCommentListPage {
     urlPattern: "board=index";
     pageTitle: "Forum";
 
@@ -668,7 +668,7 @@ reconstruct "#forum-index" -> UiForumIndexPage {
 ### 7.7 Reconstruct + `preserve` + `child` together (full combination)
 
 ```vnr
-reconstruct "#item-detail" -> UiItemDetailsPage {
+reconstruct "#item-detail" -> UiSplitLayout {
     urlPattern: R"(\/item\/\d+)";
     pageTitle: "Item Details";
 
@@ -699,7 +699,7 @@ reconstruct "#item-detail" -> UiItemDetailsPage {
 ### 7.8 Reconstruct with nested (recursive) children — comment threads
 
 ```vnr
-reconstruct "#thread-view" -> UiThreadPage {
+reconstruct "#thread-view" -> UiCommentListPage {
     urlPattern: "thread=";
     pageTitle: "Discussion Thread";
 
@@ -720,7 +720,7 @@ reconstruct "#thread-view" -> UiThreadPage {
 ### 7.9 Reconstruct targeting several possible container selectors
 
 ```vnr
-reconstruct "#results-grid, .search-results-container" -> UiGridPage {
+reconstruct "#results-grid, .search-results-container" -> UiModernGridPage {
     urlPattern: "q=";
     pageTitle: "Search Results";
 }
@@ -729,12 +729,12 @@ reconstruct "#results-grid, .search-results-container" -> UiGridPage {
 ### 7.10 Two reconstructs in the same file, gated by mutually-exclusive URL patterns
 
 ```vnr
-reconstruct "#catalog" -> UiGridPage {
+reconstruct "#catalog" -> UiModernGridPage {
     urlPattern: R"(\/browse\/?$)";
     pageTitle: "Browse Catalog";
 }
 
-reconstruct "#catalog" -> UiListPage {
+reconstruct "#catalog" -> UiTableListPage {
     urlPattern: R"(\/browse\?view=list)";
     pageTitle: "Browse Catalog (List View)";
 }
@@ -910,7 +910,7 @@ bind keywords: "meta[name='keywords'] | attr:content | split:,";
 ### 9.6 Binding against `self` at every applicable level
 
 ```vnr
-selector "#promo-banner" -> UiPromoBanner {
+selector "#promo-banner" -> UiImageCard {
     action: replace;
     bind headline: "self | attr:data-headline";
     bind ctaUrl: "self | hrefOrOnclick";
@@ -937,7 +937,7 @@ bind thumbnailWidth: "img.cover | attr:width | number";
 ### 9.8 `bind` used for form pre-fill values
 
 ```vnr
-selector "#filter-form" -> UiFilterPanel {
+selector "#filter-form" -> UiScrollPanel {
     action: replace;
     bind selectedCategory: "select[name='category'] | attr:value";
     bind minPrice: "input[name='min_price'] | attr:value | number";
@@ -953,7 +953,7 @@ selector "#filter-form" -> UiFilterPanel {
 ### 10.1 Preserving a single legacy widget
 
 ```vnr
-reconstruct "#item-detail" -> UiItemDetailsPage {
+reconstruct "#item-detail" -> UiSplitLayout {
     preserve {
         reviewsSlot: "#legacy-reviews-widget";
     }
@@ -963,7 +963,7 @@ reconstruct "#item-detail" -> UiItemDetailsPage {
 ### 10.2 Preserving several widgets at once
 
 ```vnr
-reconstruct "#checkout" -> UiCheckoutPage {
+reconstruct "#checkout" -> UiDashboardPage {
     preserve {
         paymentFormSlot: "#legacy-payment-iframe";
         couponWidgetSlot: ".coupon-code-box";
@@ -975,7 +975,7 @@ reconstruct "#checkout" -> UiCheckoutPage {
 ### 10.3 Preserving a third-party embedded widget (chat, live support)
 
 ```vnr
-reconstruct "#support-center" -> UiSupportPage {
+reconstruct "#support-center" -> UiSplitLayout {
     preserve {
         liveChatSlot: "#zendesk-chat-widget";
     }
@@ -985,7 +985,7 @@ reconstruct "#support-center" -> UiSupportPage {
 ### 10.4 Preserving a legacy comment form while reconstructing the whole thread
 
 ```vnr
-reconstruct "#thread" -> UiThreadPage {
+reconstruct "#thread" -> UiCommentListPage {
     preserve {
         newCommentFormSlot: "#legacy-comment-form";
     }
@@ -1008,7 +1008,7 @@ reconstruct "#thread" -> UiThreadPage {
 ### 11.1 Default (implicit) container scope — no `scope` key needed
 
 ```vnr
-reconstruct "#gallery" -> UiGridPage {
+reconstruct "#gallery" -> UiModernGridPage {
     child items {
         // implicitly scoped to descendants of "#gallery"
         selector: ".item-card";
@@ -1019,7 +1019,7 @@ reconstruct "#gallery" -> UiGridPage {
 ### 11.2 Explicit `document` scope for elements physically outside the container
 
 ```vnr
-reconstruct "#gallery" -> UiGridPage {
+reconstruct "#gallery" -> UiModernGridPage {
     child pagination extends BaseLink {
         scope: "document";
         selector: "#global-pager a";
@@ -1030,7 +1030,7 @@ reconstruct "#gallery" -> UiGridPage {
 ### 11.3 Mixed scoping within the same `reconstruct`
 
 ```vnr
-reconstruct "#results" -> UiGridPage {
+reconstruct "#results" -> UiModernGridPage {
     child items {
         // scoped to "#results" (default)
         selector: ".result-card";
@@ -1056,7 +1056,7 @@ class GlobalNavLink {
     bind url: "self | attr:href";
 }
 
-reconstruct "#page" -> UiPage {
+reconstruct "#page" -> UiSplitLayout {
     child topNav extends GlobalNavLink {
         selector: "#site-header nav a"; // resolved from document root, not #page
     }
@@ -1088,9 +1088,9 @@ complete prop tables for every component ship in `spm-components/docs`.
 |---|---|---|---|
 | `UiNavHeader` | `className`, `logoHref`, `primaryLinks` (JSON array), `secondaryLinks` (JSON array) | `logoUrl`, `siteName` | link lists via extended classes |
 | `UiSearchBar` | `placeholder`, `submitUrl`, `queryParamName` | `defaultValue` | — |
-| `UiGridPage` | `pageTitle`, `className`, `height`, `sidebarWidth`, `showSearch`, `searchPlaceholder`, `searchSubmitUrl`, `searchParamName`, `mobileColumns`, `mobileGap`, `mobilePadding`, `mobileShowHeader`, `mobileHeaderSticky`, `mobileShowPagination`, `mobileCardAspectRatio`, `hideSidebarOnMobile`, `mobileBreakpoint`, `tagGroups` (JSON array) | `searchDefaultValue` | `items`, `tags` (extends a tag class), `pageLinks` (extends a link class) |
+| `UiModernGridPage` | `pageTitle`, `className`, `height`, `sidebarWidth`, `showSearch`, `searchPlaceholder`, `searchSubmitUrl`, `searchParamName`, `mobileColumns`, `mobileGap`, `mobilePadding`, `mobileShowHeader`, `mobileHeaderSticky`, `mobileShowPagination`, `mobileCardAspectRatio`, `hideSidebarOnMobile`, `mobileBreakpoint`, `tagGroups` (JSON array) | `searchDefaultValue` | `items`, `tags` (extends a tag class), `pageLinks` (extends a link class) |
 | `UiHeroLanding` | `tagline`, `subtext`, `ctaLabel`, `ctaUrl`, `searchPlaceholder`, `searchSubmitUrl`, `searchParamName` | `logoUrl`, `siteName` | `primaryLinks` (extends a link class) |
-| `UiItemDetailsPage` | `pageTitle` (implied) | `title`, `description`, `price`, `imageUrl` (implied by `preserve` example) | `preserve.sidebarSlot`, gallery/spec children |
+| `UiSplitLayout` | `pageTitle` (implied) | `title`, `description`, `price`, `imageUrl` (implied by `preserve` example) | `preserve.sidebarSlot`, gallery/spec children |
 
 All numeric-looking static values (`mobileColumns: 2`, `mobileBreakpoint: 720`) are emitted as
 native JSON numbers per the implicit type deserialization rules; all boolean-looking values
@@ -1099,7 +1099,7 @@ native JSON numbers per the implicit type deserialization rules; all boolean-loo
 **To extend this table with the full, authoritative component catalog** (every prop each
 component accepts, its type, whether it's required, and default values), share the contents of
 `spm-ecosystem/spm-components/docs` — either pasted directly or as individual raw file URLs
-(e.g. `https://raw.githubusercontent.com/spm-ecosystem/spm-components/main/docs/UiGridPage.md`).
+(e.g. `https://raw.githubusercontent.com/spm-ecosystem/spm-components/main/docs/UiModernGridPage.md`).
 Once available, this section can be rewritten into one full sub-section per component, each with
 a complete prop table and dedicated `.vnr` examples exercising every prop.
 
@@ -1434,7 +1434,7 @@ selector "#legacy-search-bar" -> UiSearchBar {
 
 ```vnr
 // pages/browse/grid.vnr
-reconstruct "#listings-container" -> UiGridPage {
+reconstruct "#listings-container" -> UiModernGridPage {
     urlPattern: R"(\/browse\/?(\?.*)?$)";
     pageTitle: "Browse Listings";
     mobileColumns: 2;
@@ -1460,7 +1460,7 @@ reconstruct "#listings-container" -> UiGridPage {
 
 ```vnr
 // pages/item/details.vnr
-reconstruct "#listing-detail" -> UiItemDetailsPage {
+reconstruct "#listing-detail" -> UiSplitLayout {
     urlPattern: R"(\/listing\/\d+)";
 
     bind title: "h1.listing-title | text";
@@ -1500,7 +1500,7 @@ class UserRef {
     bind profileUrl: "self | attr:href";
 }
 
-reconstruct "#board-index" -> UiForumIndexPage {
+reconstruct "#board-index" -> UiCommentListPage {
     urlPattern: "board=index";
     pageTitle: "Community Forum";
 
@@ -1516,7 +1516,7 @@ reconstruct "#board-index" -> UiForumIndexPage {
     }
 }
 
-reconstruct "#thread-view" -> UiThreadPage {
+reconstruct "#thread-view" -> UiCommentListPage {
     urlPattern: R"(\/thread\/\d+)";
     pageTitle: "Thread";
 
@@ -1568,7 +1568,7 @@ reconstruct "#front-page" -> UiHeroLanding {
     }
 }
 
-reconstruct "#category-feed" -> UiGridPage {
+reconstruct "#category-feed" -> UiModernGridPage {
     urlPattern: R"(\/section\/[a-z-]+\/?$)";
     pageTitle: "Section";
     mobileColumns: 1;
@@ -1578,7 +1578,7 @@ reconstruct "#category-feed" -> UiGridPage {
     }
 }
 
-reconstruct "#article-body" -> UiItemDetailsPage {
+reconstruct "#article-body" -> UiSplitLayout {
     urlPattern: R"(\/article\/\d+)";
 
     bind title: "h1.headline | text";
@@ -1615,7 +1615,7 @@ class JobCard {
     bind remote: "self | attr:data-remote | number";
 }
 
-reconstruct "#job-search-results" -> UiGridPage {
+reconstruct "#job-search-results" -> UiModernGridPage {
     urlPattern: "q=";
     pageTitle: "Job Search";
     mobileColumns: 1;
@@ -1662,7 +1662,7 @@ class ListingSummary {
     bind url: "a.listing-link | attr:href";
 }
 
-reconstruct "#property-search" -> UiGridPage {
+reconstruct "#property-search" -> UiModernGridPage {
     urlPattern: "listings";
     pageTitle: "Property Listings";
     mobileColumns: 1;
@@ -1677,7 +1677,7 @@ reconstruct "#property-search" -> UiGridPage {
     }
 }
 
-reconstruct "#property-detail" -> UiItemDetailsPage {
+reconstruct "#property-detail" -> UiSplitLayout {
     urlPattern: R"(\/property\/\d+)";
 
     bind address: "h1.property-address | text";
@@ -1748,14 +1748,14 @@ urlPattern: R"(\d+)";
 
 ```vnr
 // ❌ compile error: selector block missing required "action" key
-selector "#promo" -> UiPromoBanner {
+selector "#promo" -> UiImageCard {
     headline: "Sale!";
 }
 ```
 
 ```vnr
 // ✅
-selector "#promo" -> UiPromoBanner {
+selector "#promo" -> UiImageCard {
     action: replace;
     headline: "Sale!";
 }
@@ -1767,7 +1767,7 @@ This is actually **fine** — class resolution happens after full parsing, so de
 across the workspace does not matter for a directory compile:
 
 ```vnr
-reconstruct "#page" -> UiPage {
+reconstruct "#page" -> UiSplitLayout {
     child links extends LinkClassDeclaredBelow {
         selector: ".link";
     }
@@ -1804,7 +1804,7 @@ bind title: "h2 | txt";
 ```vnr
 // ❌ likely a compile-time or resolver-level conflict: duplicate child name "items"
 // within the same parent block
-reconstruct "#page" -> UiGridPage {
+reconstruct "#page" -> UiModernGridPage {
     child items {
         selector: ".a";
     }
@@ -1816,7 +1816,7 @@ reconstruct "#page" -> UiGridPage {
 
 ```vnr
 // ✅ give each list a distinct prop name
-reconstruct "#page" -> UiGridPage {
+reconstruct "#page" -> UiModernGridPage {
     child primaryItems {
         selector: ".a";
     }
