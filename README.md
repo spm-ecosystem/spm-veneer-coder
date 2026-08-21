@@ -12,6 +12,21 @@ finetune/
     llama3-8b.yaml
 ```
 
+## Installation & Setup
+
+Ensure you are using **Python 3.13**. Set up your environment and install the dependencies:
+
+```bash
+# Create and activate a virtual environment
+python -m venv venv
+source venv/bin/activate
+
+# Install requirements
+pip install "unsloth @ git+https://github.com/unslothai/unsloth.git"
+pip install datasets trl transformers peft accelerate bitsandbytes xformers
+pip install unsloth_zoo
+```
+
 ## CLI Usage
 
 ### 1. Recompiling the Dataset
