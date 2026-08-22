@@ -610,3 +610,45 @@ reconstruct ".post-detail" -> UiPostDetails {
     }
 }
 ```
+
+# Using bind keyword inside reconstruct block
+## User
+Why does `reconstruct "#search" -> UiSearchBar { bind hiddenFields: "form | hiddenInputs"; }` fail to compile?
+## Assistant
+The `bind` keyword is ONLY used inside `class` definitions. Inside `reconstruct` blocks, direct property assignments do not use the `bind` keyword.
+
+```vnr
+// ❌ Do NOT use "bind" inside reconstruct blocks — compiler error: Expected ':' after property key
+reconstruct "#search" -> UiSearchBar {
+    bind hiddenFields: "form | hiddenInputs";
+}
+```
+
+```vnr
+// ✅ Assign properties directly without the "bind" keyword
+reconstruct "#search" -> UiSearchBar {
+    hiddenFields: "form | hiddenInputs";
+}
+```
+
+# Using attr: prefix with standalone extractors
+## User
+Why does `bind url: "a | attr:hrefOrOnclick";` fail to compile?
+## Assistant
+`hrefOrOnclick`, `nextSiblingText`, `hiddenInputs`, and `selector` are standalone base extractors. Do NOT prefix them with `attr:`. The `attr:` prefix is ONLY for HTML attribute names like `attr:src` or `attr:href`.
+
+```vnr
+// ❌ Do NOT use "attr:" prefix with standalone extractors
+bind url: "a | attr:hrefOrOnclick";
+bind text: "span | attr:nextSiblingText";
+bind fields: "form | attr:hiddenInputs";
+bind sel: "self | attr:selector";
+```
+
+```vnr
+// ✅ Use standalone base extractors directly after the pipe
+bind url: "a | hrefOrOnclick";
+bind text: "span | nextSiblingText";
+bind fields: "form | hiddenInputs";
+bind sel: "self | selector";
+```
