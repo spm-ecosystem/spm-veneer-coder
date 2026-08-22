@@ -1,134 +1,144 @@
-# Fine-Tuning with Versioned Presets
+# Veneer Coder (`spm-veneer-coder`)
 
-Previously, each training run required manually copying and editing Python scripts (with comments like `# CHANGE 1`, `# CHANGE 2`), leaving no record of which configuration generated which adapter. Now, everything is structured and versioned:
+`spm-veneer-coder` is a compiler-aware, fine-tuned LLM subagent for generating valid **Veneer Spec (.vnr)** code, CSS rules, and modernizing legacy HTML into React Shadow DOM interfaces.
 
-```
-finetune/
-  configs.py       # Configuration schemas (dataclasses) defining what a preset can contain
-  registry.py      # Dynamic registry loader for presets/*.yaml files
-  train.py         # Unified CLI for training, dataset building, GGUF exporting, and stress testing
-  presets/         # Training configuration profiles
-    qwen2.5-coder-0.5b.yaml
-    llama3-8b.yaml
-```
+Rather than acting as a generic conversational LLM, `veneer-coder` is designed as a **specialized coding subagent** that operates within a self-correction loop powered by compiler (`spm-cli`) diagnostic feedback.
 
-## Installation & Setup
+---
 
-Ensure you are using **Python 3.13**. Set up your environment and install the dependencies:
+## Repository Structure
 
-```bash
-# Create and activate a virtual environment
-python -m venv venv
-source venv/bin/activate
-
-# Install requirements
-pip install "unsloth @ git+https://github.com/unslothai/unsloth.git"
-pip install datasets trl transformers peft accelerate bitsandbytes xformers
-pip install unsloth_zoo
-```
-
-## CLI Usage
-
-### 1. Recompiling the Dataset
-Rebuilds the `dataset.jsonl` instruction-tuning set from the authoritative spec reference document:
-```bash
-python finetune/train.py --build-dataset
-```
-
-### 2. Listing Presets
-View all available configuration presets and their descriptions:
-```bash
-python finetune/train.py --list
-```
-
-### 3. Training a Model
-To run training using a specific preset:
-```bash
-python finetune/train.py --preset qwen2.5-coder-0.5b
-```
-
-To run training overriding specific parameters on the fly, without modifying the YAML file:
-```bash
-python finetune/train.py --preset qwen2.5-coder-0.5b \
-    --set training.max_steps=300 \
-    --set lora.r=32 \
-    --set training.learning_rate=1e-4
-```
-
-To dry-run and validate the final resolved configuration (without loading the model or requiring a GPU):
-```bash
-python finetune/train.py --preset llama3-8b --set training.max_steps=50 --dry-run
-```
-
-### 4. Exporting to GGUF
-To merge the trained adapter weights with the base model and quantize them into a lightweight GGUF file:
-```bash
-python finetune/train.py --export-gguf outputs/qwen2.5-coder-0.5b/v1/adapter \
-    --export-output veneer_qwen_gguf \
-    --export-quant q4_k_m
-```
-
-### 5. Concurrency Stress Test
-Run concurrent request simulations against your local Ollama server hosting the fine-tuned model:
-```bash
-python finetune/train.py --stress-test --stress-requests 100 --stress-workers 10 --stress-model veneer-coder
+```text
+spm-veneer-coder/
+├── train.py              # CLI entry point for training & dataset compilation
+├── agent.py              # Self-correcting interactive CLI agent wrapper
+├── subagent_cli.py       # Programmatic JSON delegation interface for parent agents
+├── scaffold_env.py       # Automated environment scaffolder
+├── workspace_indexer.py  # Workspace AST context summarizer
+├── pyproject.toml        # Package definition and dependencies
+├── presets/              # Versioned training configuration profiles
+│   ├── qwen2.5-coder-0.5b.yaml
+│   ├── qwen2.5-coder-1.5b.yaml
+│   ├── qwen2.5-coder-7b.yaml
+│   └── llama3-8b.yaml
+├── in/                   # Grounded training source datasets & spec references
+│   ├── veneer-spec-reference.md
+│   └── dataset/
+├── veneer_coder/         # Subagent core engine package
+│   ├── __init__.py
+│   ├── agent.py          # Strict self-correction execution loop
+│   ├── compiler.py       # ValidationStatus enum and spm-cli integration
+│   ├── extraction.py     # Robust code block extractors
+│   ├── ollama.py         # Ollama HTTP API client
+│   └── workspace.py      # Workspace indexer logic
+├── tests/                # Unit and golden evaluation test suites
+│   ├── test_presets_and_train.py
+│   ├── test_evals.py
+│   └── evals/
+└── outputs/              # Versioned model adapters and artifacts
 ```
 
 ---
 
-## Exposing as a Local Subagent (Ollama + Self-Correction)
+## Installation & Setup
 
-You can run the fine-tuned model locally via **Ollama** and wrap it in a self-correcting compiler subagent CLI that can be easily integrated into any workspace or automation script.
+Ensure you are using **Python 3.10+**. Set up your environment:
+
+```bash
+# Create and activate virtual environment
+python -m venv venv
+source venv/bin/activate
+
+# Install package in editable mode with dev dependencies
+pip install -e ".[dev]"
+```
+
+---
+
+## Model Training & Dataset Pipeline
+
+`spm-veneer-coder` utilizes `spm-finetune` for dataset compilation and training execution.
+
+### 1. Recompiling the Dataset
+Rebuilds `dataset.jsonl` from the authoritative spec reference document and dataset cases in `in/`:
+```bash
+python train.py compile-dataset --preset presets/qwen2.5-coder-1.5b.yaml --output dataset.jsonl
+```
+
+### 2. Listing Presets
+View all available configuration presets:
+```bash
+python train.py --help
+```
+
+### 3. Training a Model
+To run fine-tuning using a preset profile:
+```bash
+python train.py train --preset presets/qwen2.5-coder-1.5b.yaml
+```
+
+To dry-run and validate configuration resolution without requiring GPU/model loading:
+```bash
+python train.py train --preset presets/qwen2.5-coder-1.5b.yaml --dry-run
+```
+
+---
+
+## Local Subagent & Self-Correction Architecture
+
+The fine-tuned GGUF model runs locally via **Ollama** and wraps execution in a compiler-validated self-correction loop.
+
+```text
+        Parent Agent (e.g. Antigravity)
+                     │
+                     │ task prompt + HTML
+                     ▼
+             ┌──────────────┐
+             │ veneer-coder │
+             │  0.5B / 1.5B │
+             └──────┬───────┘
+                    │
+                    │ .vnr
+                    ▼
+                spm-cli
+                    │
+                compile
+                    │
+              ┌─────┴─────┐
+              │           │
+            valid       error
+              │           │
+              ▼           └──────► self-correction retry
+           output
+```
 
 ### 1. Registering the Model in Ollama
-Run the following commands to build the model in Ollama from the compiled GGUF weights:
+Build the model in Ollama from compiled GGUF weights:
 ```bash
-cd veneer_qwen_gguf_gguf
-ollama create veneer-coder -f Modelfile
+ollama create veneer-coder -f outputs/qwen2.5-coder-1.5b/v1/gguf_gguf/Modelfile
 ```
 
-### 2. Invoking the Subagent
-Use the provided `agent.py` script to generate Veneer Spec code. The script:
-1. Queries the local `veneer-coder` Ollama model.
-2. Extracts the generated code.
-3. Automatically runs compilation checks using `spm compile`.
-4. If a compiler error is found, it feeds the diagnostics back to the LLM to **auto-correct the code** (up to 3 validation passes).
-5. Outputs only validated, compile-passing `.vnr` code.
-
+### 2. Invoking the Interactive Agent
+Use `agent.py` to generate Veneer Spec code with strict compilation validation:
 ```bash
-# Direct task description via arguments
 python agent.py "Reconstruct the forum feed: map #forum-posts -> UiTableListPage"
-
-# Reading from stdin and saving the validated result to a file
-echo "Create a search form replacement for #searchform -> UiSearchBar" | python agent.py -o search.vnr
 ```
 
-### 3. Automated QA Environment Scaffolding
-To completely scaffold a QA testing environment (generating the `<env>.vnr`, `content.css`, and compiled `manifest.json` from its local `task.md` and `page-snapshot.html` files), run the environment scaffolder:
+If compilation fails, `agent.py` feeds compiler diagnostics back to the model for auto-correction. Reaching max retries without successful compilation raises an explicit error rather than returning invalid code.
+
+### 3. Subagent Delegation (JSON Protocol Interface)
+For automated subagent delegation from parent agents, use `subagent_cli.py`:
+
 ```bash
-python scaffold_env.py /home/watashi/Projects/spm-qa-test-suite/environments/site-j-stackoverflow
+python subagent_cli.py --input-json '{"task": "Map search", "html_path": "page.html", "env_dir": "site-x"}'
 ```
-The scaffolder automatically:
-1. Locates the task brief (`task.md`) and page snapshot HTML in the target folder.
-2. Formulates a prompt combining the instructions and raw HTML structure.
-3. Queries the local `veneer-coder` model.
-4. Extracts both VNR and CSS outputs.
-5. Performs local compilation syntax validation and repeats with error feedback for self-correction.
-6. Saves the compiled `<env_name>.vnr` and `content.css` files, and triggers the final local compile step producing the resolved `manifest.json`.
-
-### 4. Delegation as a Subagent (JSON Interface)
-For programmatic usage by parent agents (like Antigravity or Claude Code) or build orchestration tools, use the JSON-compliant delegation wrapper:
-```bash
-python subagent_cli.py
-```
-This script expects a JSON payload on stdin (or via `--input-json`), queries Ollama, executes self-correction compilation checks, writes the correct files, and outputs a structured JSON response on stdout.
 
 #### Input JSON Schema
 ```json
 {
   "task": "Reconstruct feed to UiModernGridPage mapping items to UiImageCard",
   "html_path": "/path/to/page-snapshot.html",
-  "env_dir": "/path/to/spm-qa-test-suite/environments/site-j-stackoverflow"
+  "env_dir": "/path/to/environment"
 }
 ```
 
@@ -136,60 +146,25 @@ This script expects a JSON payload on stdin (or via `--input-json`), queries Oll
 ```json
 {
   "status": "success",
-  "vnr_file": "/path/to/spm-qa-test-suite/environments/site-j-stackoverflow/stackoverflow.vnr",
-  "css_file": "/path/to/spm-qa-test-suite/environments/site-j-stackoverflow/content.css",
-  "manifest_file": "/path/to/spm-qa-test-suite/environments/site-j-stackoverflow/manifest.json",
+  "vnr_file": "/path/to/environment/environment.vnr",
+  "css_file": "/path/to/environment/content.css",
+  "manifest_file": "/path/to/environment/manifest.json",
   "retries_used": 1,
   "compilation_log": "Compiled manifest.json successfully."
 }
 ```
 
-#### Output JSON Schema (Error)
-```json
-{
-  "status": "error",
-  "message": "Max compile self-correction retries reached without success.",
-  "retries_used": 3,
-  "errors": [
-    "Compiler error details...",
-    "Subsequent compilation attempts errors..."
-  ]
-}
-```
-
 ---
 
-## Adding New Presets
+## Testing & Golden Evaluation Suite
 
-To create a new training profile:
-1. Copy an existing `.yaml` file under `presets/`.
-2. Modify the desired parameters (base model, chat template, LoRA rank, dataset paths, or trainer hyperparameters).
-3. Save it under a new filename. The filename automatically determines the preset's CLI name. No changes to `train.py` are needed.
-
----
-
-## Run Versioning and Artifacts
-
-Every training run automatically generates a versioned subdirectory under the output root, ensuring no output is ever overwritten:
+Run the unit tests and golden evaluation suite:
+```bash
+pytest tests/ -v
 ```
-outputs/
-  qwen2.5-coder-0.5b/
-    v1/
-      config.yaml      <- The exact resolved configuration used (preset + CLI overrides)
-      metadata.json     <- Train duration, timestamp, base model, and loss metrics
-      adapter/           <- Saved LoRA adapters and tokenizers
-      checkpoints/       <- Intermediate checkpoints generated by the Trainer
-    v2/
-      ...
-```
-This guarantees you can always trace any adapter back to the exact parameters that produced it.
 
----
-
-## Dataset Format
-
-The dataset config `dataset.path` points to a `.jsonl` file containing conversation histories formatted as standard chat messages:
-```json
-{"messages": [{"role": "system", "content": "..."}, {"role": "user", "content": "..."}, {"role": "assistant", "content": "..."}]}
-```
-Non-standard datasets should be normalized beforehand to prevent runtime parsing conflicts.
+The golden evaluation suite (`tests/evals/golden_eval_suite.json`) evaluates:
+- **Compiler Validity:** Ensures generated VNR code compiles cleanly via `spm-cli`.
+- **Extractor Recall:** Verifies extractor pipes (`hrefOrOnclick`, `nextSiblingText`, `hiddenInputs`, `selector`).
+- **Class Inheritance & Scoping:** Verifies `extends` syntax and property binding.
+- **Contrastive Intent:** Validates handling of non-VNR conversational inputs.

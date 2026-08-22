@@ -2,6 +2,9 @@ description: "Llama-3 8B (4bit) — larger model, more capacity, slower training
 output_root: outputs
 output_dir: outputs/llama3-8b/v1
 
+backend:
+  name: "unsloth"
+
 model:
   repository: "unsloth/llama-3-8b-Instruct-bnb-4bit"
 

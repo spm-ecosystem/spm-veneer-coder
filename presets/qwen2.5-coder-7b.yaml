@@ -2,6 +2,9 @@ description: "Qwen2.5-Coder 7B — largest target model, superior coding logic a
 output_root: outputs
 output_dir: outputs/qwen2.5-coder-7b/v1
 
+backend:
+  name: "unsloth"
+
 model:
   repository: "unsloth/Qwen2.5-Coder-7B-Instruct"
 

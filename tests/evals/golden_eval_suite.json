@@ -1,0 +1,46 @@
+[
+  {
+    "id": "eval-01-bind-extractors",
+    "name": "Extractors Recall Test",
+    "prompt": "Create a Veneer Spec snippet binding product title from h2.title text, link from a.cta hrefOrOnclick, price from span.price nextSiblingText, hidden fields from form hiddenInputs, and container selector from self selector.",
+    "must_contain": [
+      "hrefOrOnclick",
+      "nextSiblingText",
+      "hiddenInputs",
+      "selector"
+    ],
+    "must_compile": true
+  },
+  {
+    "id": "eval-02-class-inheritance",
+    "name": "Class Inheritance Test",
+    "prompt": "Write a Veneer Spec class BaseCard binding title: 'h3 | text' and a class ProductCard extending BaseCard with price: '.price | text'.",
+    "must_contain": [
+      "class BaseCard",
+      "class ProductCard extends BaseCard",
+      "bind title",
+      "bind price"
+    ],
+    "must_compile": true
+  },
+  {
+    "id": "eval-03-reconstruct-nav",
+    "name": "Nav Header Reconstruct Test",
+    "prompt": "Write a Veneer Spec reconstruct statement mapping '#nav-bar' to component 'UiNavHeader' with pageTitle: 'Home'.",
+    "must_contain": [
+      "reconstruct \"#nav-bar\" -> UiNavHeader",
+      "pageTitle"
+    ],
+    "must_compile": true
+  },
+  {
+    "id": "eval-04-contrastive-refusal",
+    "name": "Contrastive Intent Test",
+    "prompt": "Hello! How are you today?",
+    "contrastive_type": "conversational",
+    "must_not_contain": [
+      "reconstruct",
+      "bind title"
+    ]
+  }
+]

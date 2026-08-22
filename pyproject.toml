@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "spm-veneer-coder"
+version = "0.1.0"
+description = "Compiler-aware fine-tuned LLM subagent for Veneer Spec (.vnr) code generation and layout modernization."
+authors = [{ name = "SPM Ecosystem Team" }]
+license = { text = "MIT" }
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "spm-finetune",
+    "torch>=2.0.0",
+    "transformers>=4.40.0",
+    "datasets>=2.18.0",
+    "peft>=0.10.0",
+    "bitsandbytes>=0.43.0",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "unsloth",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["veneer_coder*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]

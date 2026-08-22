@@ -79,7 +79,7 @@ def test_markdown_dataset_compilation(tmp_path):
     assert output_file.exists()
 
     lines = [json.loads(line) for line in output_file.read_text(encoding="utf-8").splitlines() if line.strip()]
-    assert len(lines) == 366
+    assert len(lines) == 417
     for entry in lines:
         assert "messages" in entry
         assert len(entry["messages"]) >= 2
