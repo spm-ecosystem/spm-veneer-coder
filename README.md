@@ -13,9 +13,10 @@ spm-veneer-coder/
 ├── train.py              # CLI entry point for training & dataset compilation
 ├── agent.py              # Self-correcting interactive CLI agent wrapper
 ├── subagent_cli.py       # Programmatic JSON delegation interface for parent agents
-├── scaffold_env.py       # Automated environment scaffolder
-├── workspace_indexer.py  # Workspace AST context summarizer
 ├── pyproject.toml        # Package definition and dependencies
+├── scripts/              # Helper automation scripts
+│   ├── scaffold_env.py   # Automated environment scaffolder
+│   └── workspace_indexer.py # Workspace AST context summarizer
 ├── presets/              # Versioned training configuration profiles
 │   ├── qwen2.5-coder-0.5b.yaml
 │   ├── qwen2.5-coder-1.5b.yaml
