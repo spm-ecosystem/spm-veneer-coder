@@ -25,3 +25,9 @@ veneer_qwen_gguf_gguf/
 *.bin
 *.pt
 *.safetensors
+
+# Build & egg-info metadata
+*.egg-info/
+*.egg
+build/
+dist/
