@@ -61,12 +61,11 @@ def run_agent(
 
             if iteration < max_iterations:
                 current_prompt = (
-                    f"Your previously generated Veneer Spec code failed to compile with the following error:\n"
-                    f"```\n{err_msg}\n```\n\n"
-                    f"Here was the code you generated:\n"
+                    f"The following Veneer Spec code failed compilation with spm-cli:\n\n"
                     f"```vnr\n{vnr_code}\n```\n\n"
-                    f"Please fix the syntax error and output the complete, corrected Veneer Spec code. "
-                    f"Only output correct Veneer Spec code in code blocks."
+                    f"Compiler Error Diagnostic:\n{err_msg}\n\n"
+                    f"Please fix the Veneer Spec code for the original request: '{task_prompt}' "
+                    f"and return only the valid ```vnr block."
                 )
 
     # Max iterations reached without successful compilation
