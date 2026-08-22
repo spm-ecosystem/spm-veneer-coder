@@ -2,7 +2,7 @@
   {
     "id": "eval-01-bind-extractors",
     "name": "Extractors Recall Test",
-    "prompt": "Create a Veneer Spec snippet binding product title from h2.title text, link from a.cta hrefOrOnclick, price from span.price nextSiblingText, hidden fields from form hiddenInputs, and container selector from self selector.",
+    "prompt": "Write a Veneer Spec class ProductCard binding product title from h2.title text, link from a.cta hrefOrOnclick, price from span.price nextSiblingText, hidden fields from form hiddenInputs, and container selector from self selector.",
     "must_contain": [
       "hrefOrOnclick",
       "nextSiblingText",
