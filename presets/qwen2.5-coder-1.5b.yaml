@@ -1,35 +1,40 @@
 description: "Qwen2.5-Coder 1.5B — moderate size, fast training, excellent balance of speed and reasoning"
 output_root: outputs
+output_dir: outputs/qwen2.5-coder-1.5b/v1
 
 model:
-  name: unsloth/Qwen2.5-Coder-1.5B-Instruct
-  chat_template: qwen-2.5
+  repository: "unsloth/Qwen2.5-Coder-1.5B-Instruct"
+
+model_load:
   max_seq_length: 4096
   load_in_4bit: true
 
-lora:
-  r: 16
-  lora_alpha: 16
-  lora_dropout: 0.0
-  bias: none
-  use_gradient_checkpointing: unsloth
+strategy:
+  type: "lora"
+  parameters:
+    r: 16
+    lora_alpha: 16
+    lora_dropout: 0.0
+    bias: "none"
+    use_gradient_checkpointing: "unsloth"
 
 dataset:
-  path: dataset.jsonl
-  format: json
-  split: train
-  messages_field: messages
-  num_proc: 2
-  packing: false
+  path: "in/dataset"
+  format: "markdown"
+  mapping:
+    messages: "messages"
 
-training:
+backend:
+  name: "unsloth"
+
+hyperparameters:
   per_device_train_batch_size: 1
   gradient_accumulation_steps: 8
   warmup_steps: 5
   num_train_epochs: 3
   learning_rate: 0.0002
   logging_steps: 1
-  optim: adamw_8bit
+  optim: "adamw_8bit"
   weight_decay: 0.01
-  lr_scheduler_type: linear
+  lr_scheduler_type: "linear"
   seed: 3407
