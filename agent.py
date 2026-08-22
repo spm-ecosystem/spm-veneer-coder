@@ -3,8 +3,8 @@
 CLI wrapper for using the local Veneer-coder Ollama model as a self-correcting subagent.
 
 Usage:
-    python finetune/agent.py "Create a header reconstruction for #header -> UiNavHeader"
-    python finetune/agent.py --input task_description.txt --output theme.vnr
+    python agent.py "Create a header reconstruction for #header -> UiNavHeader"
+    python agent.py --input task_description.txt --output theme.vnr
 """
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ def resolve_spm_cli() -> str:
     path_lookup = shutil.which("spm")
     if path_lookup:
         return path_lookup
-    sibling_path = Path(__file__).resolve().parent.parent.parent / "spm-cli/spm"
+    sibling_path = Path(__file__).resolve().parent.parent / "spm-cli/spm"
     if sibling_path.exists():
         return str(sibling_path)
     return "spm"

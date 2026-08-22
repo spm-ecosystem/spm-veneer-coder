@@ -88,7 +88,7 @@ ollama create veneer-coder -f Modelfile
 ```
 
 ### 2. Invoking the Subagent
-Use the provided `finetune/agent.py` script to generate Veneer Spec code. The script:
+Use the provided `agent.py` script to generate Veneer Spec code. The script:
 1. Queries the local `veneer-coder` Ollama model.
 2. Extracts the generated code.
 3. Automatically runs compilation checks using `spm compile`.
@@ -97,16 +97,16 @@ Use the provided `finetune/agent.py` script to generate Veneer Spec code. The sc
 
 ```bash
 # Direct task description via arguments
-python finetune/agent.py "Reconstruct the forum feed: map #forum-posts -> UiTableListPage"
+python agent.py "Reconstruct the forum feed: map #forum-posts -> UiTableListPage"
 
 # Reading from stdin and saving the validated result to a file
-echo "Create a search form replacement for #searchform -> UiSearchBar" | python finetune/agent.py -o search.vnr
+echo "Create a search form replacement for #searchform -> UiSearchBar" | python agent.py -o search.vnr
 ```
 
 ### 3. Automated QA Environment Scaffolding
 To completely scaffold a QA testing environment (generating the `<env>.vnr`, `content.css`, and compiled `manifest.json` from its local `task.md` and `page-snapshot.html` files), run the environment scaffolder:
 ```bash
-python finetune/scaffold_env.py /home/watashi/Projects/spm-qa-test-suite/environments/site-j-stackoverflow
+python scaffold_env.py /home/watashi/Projects/spm-qa-test-suite/environments/site-j-stackoverflow
 ```
 The scaffolder automatically:
 1. Locates the task brief (`task.md`) and page snapshot HTML in the target folder.
@@ -119,7 +119,7 @@ The scaffolder automatically:
 ### 4. Delegation as a Subagent (JSON Interface)
 For programmatic usage by parent agents (like Antigravity or Claude Code) or build orchestration tools, use the JSON-compliant delegation wrapper:
 ```bash
-python finetune/subagent_cli.py
+python subagent_cli.py
 ```
 This script expects a JSON payload on stdin (or via `--input-json`), queries Ollama, executes self-correction compilation checks, writes the correct files, and outputs a structured JSON response on stdout.
 
@@ -162,7 +162,7 @@ This script expects a JSON payload on stdin (or via `--input-json`), queries Oll
 ## Adding New Presets
 
 To create a new training profile:
-1. Copy an existing `.yaml` file under `finetune/presets/`.
+1. Copy an existing `.yaml` file under `presets/`.
 2. Modify the desired parameters (base model, chat template, LoRA rank, dataset paths, or trainer hyperparameters).
 3. Save it under a new filename. The filename automatically determines the preset's CLI name. No changes to `train.py` are needed.
 

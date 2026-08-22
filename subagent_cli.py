@@ -5,7 +5,7 @@ Allows any external agent (Antigravity, Claude Code) or script to delegate
 Veneer Spec generation tasks by passing a JSON payload and receiving a structured JSON response.
 
 Usage:
-    python finetune/subagent_cli.py --input-json '{"task": "Map search", "html_path": "page.html", "env_dir": "site-x"}'
+    python subagent_cli.py --input-json '{"task": "Map search", "html_path": "page.html", "env_dir": "site-x"}'
 """
 import sys
 import json

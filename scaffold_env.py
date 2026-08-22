@@ -4,7 +4,7 @@ Scaffolding automation script to generate correct VNR and CSS for a QA environme
 using the local Veneer-coder Ollama model with compiler self-correction.
 
 Usage:
-    python finetune/scaffold_env.py /home/watashi/Projects/spm-qa-test-suite/environments/site-j-stackoverflow
+    python scaffold_env.py /home/watashi/Projects/spm-qa-test-suite/environments/site-j-stackoverflow
 """
 from __future__ import annotations
 
@@ -25,7 +25,7 @@ def resolve_spm_cli() -> str:
     path_lookup = shutil.which("spm")
     if path_lookup:
         return path_lookup
-    sibling_path = Path(__file__).resolve().parent.parent.parent / "spm-cli/spm"
+    sibling_path = Path(__file__).resolve().parent.parent / "spm-cli/spm"
     if sibling_path.exists():
         return str(sibling_path)
     return "spm"
