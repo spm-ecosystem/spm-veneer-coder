@@ -1,8 +1,8 @@
-description: "Qwen2.5-Coder 0.5B — small model, fast training, good for quick iteration"
+description: "Qwen2.5-Coder 1.5B — moderate size, fast training, excellent balance of speed and reasoning"
 output_root: outputs
 
 model:
-  name: unsloth/Qwen2.5-Coder-0.5B-Instruct
+  name: unsloth/Qwen2.5-Coder-1.5B-Instruct
   chat_template: qwen-2.5
   max_seq_length: 4096
   load_in_4bit: true

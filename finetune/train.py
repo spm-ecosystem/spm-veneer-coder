@@ -582,7 +582,7 @@ def run_dataset_build() -> None:
     print(f"[Dataset Compiler] Successfully wrote dataset -> {dest_file}")
 
 
-def run_export_gguf(adapter_path: str, output_name: str, quant_method: str) -> None:
+def run_export_gguf(adapter_path: str, output_name: str, quant_method: str, max_seq_length: int = None) -> None:
     # Heavy ML imports deferred
     from unsloth import FastLanguageModel
 
@@ -594,10 +594,27 @@ def run_export_gguf(adapter_path: str, output_name: str, quant_method: str) -> N
     if not abs_output.is_absolute():
         abs_output = WORKSPACE_ROOT / abs_output
 
-    print(f"[Exporter] Loading trained model and adapter from {abs_adapter}...")
+    resolved_max_seq = max_seq_length
+    if not resolved_max_seq:
+        # Fallback to defaults
+        resolved_max_seq = 4096
+        # Try to resolve from config.yaml in parent directory
+        config_path = abs_adapter.parent / "config.yaml"
+        if config_path.exists():
+            try:
+                import yaml
+                with open(config_path, "r", encoding="utf-8") as f:
+                    cfg_data = yaml.safe_load(f)
+                    if cfg_data and "model" in cfg_data and "max_seq_length" in cfg_data["model"]:
+                        resolved_max_seq = int(cfg_data["model"]["max_seq_length"])
+                        print(f"[Exporter] Resolved max_seq_length={resolved_max_seq} from {config_path}")
+            except Exception as e:
+                print(f"[Exporter] Warning: Failed to parse config.yaml for max_seq_length: {e}")
+
+    print(f"[Exporter] Loading trained model and adapter from {abs_adapter} with max_seq_length={resolved_max_seq}...")
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=str(abs_adapter),
-        max_seq_length=1024,
+        max_seq_length=resolved_max_seq,
         load_in_4bit=True,
     )
 
@@ -695,6 +712,7 @@ def main(argv=None) -> int:
     # Options for GGUF export
     parser.add_argument("--export-output", default="veneer_qwen_gguf", help="Output directory/name for GGUF")
     parser.add_argument("--export-quant", default="q4_k_m", help="GGUF quantization method (default: q4_k_m)")
+    parser.add_argument("--export-max-seq-length", type=int, help="Override max_seq_length for GGUF export (otherwise read from config.yaml or defaults to 4096)")
 
     # Options for stress test
     parser.add_argument("--stress-requests", type=int, default=100, help="Number of total stress test requests")
@@ -718,7 +736,7 @@ def main(argv=None) -> int:
         return 0
 
     if args.export_gguf:
-        run_export_gguf(args.export_gguf, args.export_output, args.export_quant)
+        run_export_gguf(args.export_gguf, args.export_output, args.export_quant, args.export_max_seq_length)
         return 0
 
     if args.stress_test:
