@@ -30,9 +30,6 @@ dataset:
           compiler_name: "spm-cli"
           output_format: "manifest.json"
           code_language: "vnr"
-          skip_headings:
-            - "17."
-            - "17. Common Errors, Anti-Patterns & Fixes"
       - path: "dataset"
         format: "markdown"
 
