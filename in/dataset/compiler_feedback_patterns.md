@@ -196,3 +196,72 @@ reconstruct "#feed" -> UiTableListPage {
     }
 }
 ```
+
+# Compiler Error Feedback - Unknown Component Name (UiNavbar -> UiNavHeader)
+## User
+The following Veneer Spec code failed compilation with spm-cli:
+
+```vnr
+reconstruct ".header" -> UiNavbar {
+    action: replace;
+}
+```
+
+Compiler Error Diagnostic:
+[Error] Veneer compilation failed: Unknown component "UiNavbar". (Note: Valid SPM components are UiNavHeader, UiHeroLanding, UiTableListPage, UiModernGridPage, UiSplitLayout, UiSearchBar, UiImageCard, UiPostDetails).
+
+Please fix the Veneer Spec code and return only the valid ```vnr block.
+## Assistant
+`UiNavbar` is not a registered component in the SPM ecosystem. The registered navigation header component is `UiNavHeader`. Here is the corrected code:
+
+```vnr
+reconstruct ".header" -> UiNavHeader {
+    action: replace;
+}
+```
+
+# Compiler Error Feedback - Unknown Component Name (UiGrid -> UiModernGridPage)
+## User
+The following Veneer Spec code failed compilation with spm-cli:
+
+```vnr
+reconstruct "#gallery" -> UiGrid {
+    action: replace;
+}
+```
+
+Compiler Error Diagnostic:
+[Error] Veneer compilation failed: Unknown component "UiGrid". (Note: Valid SPM layout components are UiModernGridPage, UiTableListPage, UiSplitLayout).
+
+Please fix the Veneer Spec code and return only the valid ```vnr block.
+## Assistant
+`UiGrid` is not a valid SPM component. The registered grid layout component is `UiModernGridPage`. Here is the corrected code:
+
+```vnr
+reconstruct "#gallery" -> UiModernGridPage {
+    action: replace;
+}
+```
+
+# Compiler Error Feedback - Unknown Component Name (UiTable -> UiTableListPage)
+## User
+The following Veneer Spec code failed compilation with spm-cli:
+
+```vnr
+reconstruct "#data-list" -> UiTable {
+    action: replace;
+}
+```
+
+Compiler Error Diagnostic:
+[Error] Veneer compilation failed: Unknown component "UiTable". (Note: Valid SPM components for tabular list data are UiTableListPage).
+
+Please fix the Veneer Spec code and return only the valid ```vnr block.
+## Assistant
+`UiTable` is not a registered SPM component. Use `UiTableListPage` for table and list reconstructions. Here is the corrected code:
+
+```vnr
+reconstruct "#data-list" -> UiTableListPage {
+    action: replace;
+}
+```
