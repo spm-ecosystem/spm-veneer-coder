@@ -26,16 +26,20 @@ spm-veneer-coder/
 │   ├── compiler.py       # ValidationStatus enum and spm-cli integration
 │   ├── extraction.py     # Robust code block extractors
 │   ├── ollama.py         # Ollama HTTP API client
-│   └── workspace.py      # Workspace indexer logic
+│   ├── workspace.py      # Workspace indexer logic
+│   ├── engine.py         # Decoupled engine abstraction (BaseLLMEngine, OllamaEngine, MockEngine)
+│   └── benchmark.py      # Real-time evaluation runner & metrics collector
 ├── scripts/              # Executable CLI scripts
 │   ├── train.py          # CLI entry point for training & dataset compilation
 │   ├── agent.py          # Self-correcting interactive CLI agent wrapper
 │   ├── subagent_cli.py   # Programmatic JSON delegation interface for parent agents
 │   ├── scaffold_env.py   # Automated environment scaffolder
-│   └── workspace_indexer.py # Workspace AST context summarizer
+│   ├── workspace_indexer.py # Workspace AST context summarizer
+│   └── benchmark_engine.py  # Live engine benchmark CLI tool
 ├── tests/                # Unit and golden evaluation test suites
 │   ├── test_presets_and_train.py
 │   ├── test_evals.py
+│   ├── test_live_engine.py
 │   └── evals/
 └── outputs/              # Versioned model adapters and artifacts
 ```
@@ -135,28 +139,34 @@ For automated subagent delegation from parent agents, use `scripts/subagent_cli.
 python scripts/subagent_cli.py --input-json '{"task": "Map search", "html_path": "page.html", "env_dir": "site-x"}'
 ```
 
-#### Input JSON Schema
-```json
-{
-  "task": "Reconstruct feed to UiModernGridPage mapping items to UiImageCard",
-  "html_path": "/path/to/page-snapshot.html",
-  "env_dir": "/path/to/environment"
-}
-```
-
-#### Output JSON Schema (Success)
-```json
-{
-  "status": "success",
-  "vnr_file": "/path/to/environment/environment.vnr",
-  "css_file": "/path/to/environment/content.css",
-  "manifest_file": "/path/to/environment/manifest.json",
-  "retries_used": 1,
-  "compilation_log": "Compiled manifest.json successfully."
-}
-```
-
 ---
+
+## Real-Time Engine Benchmarking & Evaluation
+
+`spm-veneer-coder` includes a decoupled, engine-agnostic evaluation framework (`BaseLLMEngine`) to systematically measure model performance, compilation validity, latency, and tokens per second in real time.
+
+### 1. CLI Benchmark Tool
+Run live systematic benchmarks against local Ollama or mock engines:
+
+```bash
+# Run benchmark against live Ollama model
+python scripts/benchmark_engine.py --engine ollama --model veneer-coder
+
+# Dry-run offline mock benchmark
+python scripts/benchmark_engine.py --engine mock
+```
+
+Reports are automatically saved to `outputs/benchmarks/benchmark_<engine>_<timestamp>.json`.
+
+### 2. Pytest Integration
+- **Fast Offline Unit Tests (0.1s):**
+  ```bash
+  pytest tests/
+  ```
+- **Live Engine Inference Tests:**
+  ```bash
+  pytest tests/ -m live
+  ```
 
 ## Testing & Golden Evaluation Suite
 
