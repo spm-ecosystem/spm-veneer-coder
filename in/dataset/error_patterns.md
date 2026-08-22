@@ -303,3 +303,310 @@ selector ".search-form" -> UiSearchBar {
     bind hiddenFields: "form | hiddenInputs";
 }
 ```
+
+# UiNavbar, UiHeader, UiNavigation — All Invalid
+## User
+I keep getting compiler errors with my header component. I've tried `UiNavbar`, `UiHeader`, and `UiNavigation` — none work. What's the correct name?
+## Assistant
+None of those are registered components. The valid component for a site header with logo and navigation links is `UiNavHeader`.
+
+```vnr
+// ❌ UiNavbar — does not exist
+reconstruct ".nav" -> UiNavbar {}
+
+// ❌ UiHeader — does not exist
+reconstruct ".nav" -> UiHeader {}
+
+// ❌ UiNavigation — does not exist
+reconstruct ".nav" -> UiNavigation {}
+```
+
+```vnr
+// ✅ The correct component name is UiNavHeader
+reconstruct ".nav" -> UiNavHeader {
+    action: replace;
+    bind logoUrl: ".logo img | attr:src";
+    bind logoHref: ".logo | attr:href";
+    child primaryLinks {
+        selector: "nav a.primary";
+        bind label: "self | text";
+        bind url: "self | attr:href";
+    }
+}
+```
+
+The full list of registered components: `UiNavHeader`, `UiHeroLanding`, `UiSearchBar`, `UiImageCard`, `UiTagBadge`, `UiPaginationBar`, `UiModernGridPage`, `UiImageViewer`, `UiScrollPanel`, `UiSplitLayout`, `UiCommentListPage`, `UiDashboardPage`, `UiStatsDashboard`, `UiTable`, `UiTableListPage`, `UiToastContainer`, `UiBox`, `UiFlexRow`, `UiFlexColumn`, `UiGrid`, `UiText`, `UiImage`, `UiLink`, `UiScrollBox`.
+
+# UiCard, UiProductCard — Invalid Component Names
+## User
+I want to display product cards in a grid. I tried `UiCard` and `UiProductCard` but the compiler rejects them.
+## Assistant
+`UiCard` and `UiProductCard` are not registered components. For individual cards, use `UiImageCard`. For a full grid of cards, use `UiModernGridPage` with a `child items` block.
+
+```vnr
+// ❌ UiCard and UiProductCard do not exist
+reconstruct ".product-grid" -> UiCard {}
+reconstruct ".product-grid" -> UiProductCard {}
+```
+
+```vnr
+// ✅ For a single card replace:
+selector ".promo-card" -> UiImageCard {
+    action: replace;
+    bind imageUrl: "img | attr:src";
+    bind linkUrl: "a | attr:href";
+    bind title: ".card-title | text";
+    bind id: "self | attr:data-id";
+}
+
+// ✅ For a full grid:
+reconstruct ".product-grid" -> UiModernGridPage {
+    pageTitle: "Products";
+    child items {
+        selector: ".product-card";
+        bind imageUrl: "img | attr:src";
+        bind linkUrl: "a | attr:href";
+        bind title: ".title | text";
+        bind id: "self | attr:data-id";
+    }
+}
+```
+
+# UiTableListPage — columns Prop Structure
+## User
+My `UiTableListPage` shows rows but the columns are wrong. I tried `bind columns: ".col-header | text"` but it doesn't work.
+## Assistant
+`columns` in `UiTableListPage` is a static configuration array (`TableColumnConfig[]`), not a scraped value — it defines how to render columns, not what data to extract. You set it as a static JSON value using a raw string, not a `bind`.
+
+```vnr
+// ❌ columns is a static layout config, not a scraped field
+reconstruct ".data-table" -> UiTableListPage {
+    bind columns: ".col-header | text";
+    child tableRows { selector: "tr"; bind name: "td:first-child | text"; }
+}
+```
+
+```vnr
+// ✅ columns is declared as a static raw-string JSON array
+reconstruct ".data-table" -> UiTableListPage {
+    pageTitle: "Data";
+    columns: R"([
+      { "key": "name", "header": "Name", "type": "text" },
+      { "key": "url", "header": "Link", "type": "link", "urlKey": "url" }
+    ])";
+    child tableRows {
+        selector: "tr.data-row";
+        bind name: "td:first-child | text";
+        bind url: "td a | attr:href";
+    }
+}
+```
+
+# UiPaginationBar — paramName vs pageParamName
+## User
+I set up `UiPaginationBar` but clicking page links doesn't update the URL query param. I tried `pageParamName` but nothing happens.
+## Assistant
+The correct prop is `paramName`, not `pageParamName`. `UiPaginationBar` uses `paramName` (typed as `string?` in its TypeScript interface) alongside a `child pageLinks` block that provides the scraped page links.
+
+```vnr
+// ❌ pageParamName is not a valid prop on UiPaginationBar
+selector ".pagination" -> UiPaginationBar {
+    action: replace;
+    pageParamName: "page";
+}
+```
+
+```vnr
+// ✅ use paramName and provide pageLinks via child
+selector ".pagination" -> UiPaginationBar {
+    action: replace;
+    paramName: "page";
+    child pageLinks {
+        selector: "a.page-link";
+        bind label: "self | text";
+        bind url: "self | attr:href";
+    }
+}
+```
+
+# UiTagBadge — Required label Prop
+## User
+My `UiTagBadge` renders nothing. I only have the `href` bound.
+## Assistant
+`UiTagBadge` has one required prop: `label` (typed as `string` — not optional). Without `label` the badge renders nothing.
+
+```vnr
+// ❌ label is required — UiTagBadge renders nothing without it
+selector ".tag" -> UiTagBadge {
+    action: replace;
+    bind href: "self | attr:href";
+}
+```
+
+```vnr
+// ✅ bind label (required) and optionally href, count, addUrl, removeUrl
+selector ".tag" -> UiTagBadge {
+    action: replace;
+    bind label: "self | text";
+    bind href: "self | attr:href";
+    bind count: ".tag-count | text | number";
+}
+```
+
+# number vs cleanNumber Pipe Transform
+## User
+My price shows as `null` when I use `| number`. The raw text is `"$1,299.00"`. What's wrong?
+## Assistant
+`number` strips nothing — it calls `Number(val.trim())` which returns `NaN` for `"$1,299.00"` because of the dollar sign and comma. Use `cleanNumber` instead: it strips commas, spaces and non-numeric characters (except `.` and `-`) before parsing.
+
+```vnr
+// ❌ Number("$1,299.00") → NaN → null
+bind price: "span.price | text | number";
+```
+
+```vnr
+// ✅ cleanNumber strips "$" and "," before parsing → "1299"
+bind price: "span.price | text | cleanNumber";
+```
+
+`number` is suitable only for text that is already a plain numeric string (e.g. `"42"`, `"3.14"`). For any formatted currency, use `cleanNumber`.
+
+# preserve — Slot Name Must Match Component id
+## User
+I used `preserve` to keep a comment form but it disappears at runtime. My code compiles fine.
+## Assistant
+`preserve` reparents a legacy DOM node into a named slot **inside** the new Shadow DOM layout, but the target layout component must have an element with `id="{slotName}-container"` in its rendered output. If the slot name doesn't match, the legacy node is removed from the original page but never reappears — it fails silently at runtime, not at compile time.
+
+```vnr
+// ❌ compiles fine but fails silently if UiSplitLayout has no id="commentForm-container"
+reconstruct ".post-page" -> UiSplitLayout {
+    action: replace;
+    preserve commentForm: "form.comment-form";
+}
+```
+
+To fix: check the target component's actual rendered HTML to find its valid slot container IDs before using `preserve`. If no matching container ID exists, the slot name is invalid at runtime.
+
+# split Pipe — Returns JSON Array String
+## User
+I bound a comma-separated tag string with `| split` expecting an array. The component shows the raw JSON string instead.
+## Assistant
+The `split` pipe returns a **JSON-encoded array string** (e.g. `'["tag1","tag2"]'`), not a JavaScript array. The Veneer Spec runtime passes this JSON string to the React component prop, which must accept `string` or parse it internally. If the component expects `string[]`, the JSON string is passed as-is and the component is responsible for parsing.
+
+```vnr
+// ✅ split whitespace-delimited tokens into a JSON array string
+bind tags: ".tags | text | split";
+// Result prop value: '["cooking","travel","tech"]'
+
+// ✅ split on a custom delimiter (e.g. comma)
+bind tags: ".tags | text | split:,";
+// Result prop value: '["cooking"," travel"," tech"]'
+// Note: values are NOT trimmed with split:<delim>
+```
+
+For components that accept a `TagItem[]` prop (like `UiModernGridPage`), use a `child tags` block instead of a top-level `bind tags`:
+
+```vnr
+child tags {
+    selector: "a.tag";
+    bind label: "self | text";
+    bind href: "self | attr:href";
+}
+```
+
+# selector vs reconstruct — When to Use Each
+## User
+When should I use `selector` vs `reconstruct`? I always use `reconstruct` for everything.
+## Assistant
+They serve different scopes:
+
+- **`selector`** targets a **single element** (a nav bar, a button, a search box) to either hide it or replace it with a React component in-place, without affecting the rest of the page.
+- **`reconstruct`** targets a **large container** (a full catalog section, comment board, or whole page viewport), hides all legacy children inside it, and mounts a React layout component inside an isolated Shadow DOM host.
+
+```vnr
+// ✅ selector: replace a single nav element in-place
+selector "#top-nav" -> UiNavHeader {
+    action: replace;
+    bind logoUrl: ".logo img | attr:src";
+}
+
+// ✅ reconstruct: replace an entire page section with a modern layout
+reconstruct "#main-catalog" -> UiModernGridPage {
+    pageTitle: "Browse";
+    child items {
+        selector: ".product-card";
+        bind title: ".title | text";
+        bind imageUrl: "img | attr:src";
+        bind linkUrl: "a | attr:href";
+        bind id: "self | attr:data-id";
+    }
+}
+```
+
+Using `reconstruct` on a small element like a nav bar is technically valid but wasteful — it spins up a Shadow DOM host unnecessarily. Prefer `selector` for contained single-element replacements.
+
+# urlPattern — Only Inside reconstruct or selector Blocks
+## User
+I declared `urlPattern` at the top level of my `.vnr` file but it has no effect.
+## Assistant
+`urlPattern` is a block-level constraint, not a file-level directive. It must be declared **inside** a `reconstruct` or `selector` block, where it gates whether that specific block activates on the current page URL.
+
+```vnr
+// ❌ urlPattern at file/theme level has no effect
+urlPattern: R"(/products/*)";
+
+reconstruct ".catalog" -> UiModernGridPage {
+    pageTitle: "Products";
+}
+```
+
+```vnr
+// ✅ urlPattern inside the block that it should gate
+reconstruct ".catalog" -> UiModernGridPage {
+    urlPattern: R"(/products/*)";
+    pageTitle: "Products";
+    child items {
+        selector: ".product-card";
+        bind title: ".title | text";
+        bind imageUrl: "img | attr:src";
+        bind linkUrl: "a | attr:href";
+        bind id: "self | attr:data-id";
+    }
+}
+```
+
+Multiple blocks can have different `urlPattern` values in the same file, enabling a single `.vnr` file to handle multiple page types.
+
+# UiPostDetails — imageUrl is Required
+## User
+My `UiPostDetails` reconstruct compiles but renders nothing on the image side. I only have `tags` and `buttons` children.
+## Assistant
+`UiPostDetails` has one required prop: `imageUrl` (typed as `string` — not optional). Without it the component cannot render its image slot and falls back to an empty layout.
+
+```vnr
+// ❌ imageUrl is required — component renders broken without it
+reconstruct ".post-detail" -> UiPostDetails {
+    child tags {
+        selector: "a.tag";
+        bind label: "self | text";
+        bind href: "self | attr:href";
+    }
+}
+```
+
+```vnr
+// ✅ bind imageUrl (required) before adding optional children
+reconstruct ".post-detail" -> UiPostDetails {
+    bind imageUrl: ".post-hero img | attr:src";
+    child tags {
+        selector: "a.tag";
+        bind label: "self | text";
+        bind href: "self | attr:href";
+    }
+    child buttons {
+        selector: "a.action-btn";
+        bind label: "self | text";
+        bind url: "self | attr:href";
+    }
+}
+```
