@@ -39,8 +39,8 @@ def test_preset_loading_and_validation(preset_name):
     preset_path = PRESET_DIR / preset_name
     req = load_preset_with_overrides(str(preset_path))
     assert req.model.repository
-    assert req.dataset.path == "in/dataset"
-    assert req.dataset.format == "markdown"
+    assert req.dataset.path == "in"
+    assert req.dataset.format == "veneer-composite"
     assert req.backend.name == "unsloth"
     assert req.strategy.type == "lora"
     assert req.output_dir.startswith("outputs/")
@@ -79,7 +79,7 @@ def test_markdown_dataset_compilation(tmp_path):
     assert output_file.exists()
 
     lines = [json.loads(line) for line in output_file.read_text(encoding="utf-8").splitlines() if line.strip()]
-    assert len(lines) == 95
+    assert len(lines) == 366
     for entry in lines:
         assert "messages" in entry
         assert len(entry["messages"]) >= 2

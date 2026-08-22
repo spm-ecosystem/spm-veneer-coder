@@ -19,8 +19,8 @@ strategy:
     use_gradient_checkpointing: "unsloth"
 
 dataset:
-  path: "in/dataset"
-  format: "markdown"
+  path: "in"
+  format: "veneer-composite"
   mapping:
     messages: "messages"
 
