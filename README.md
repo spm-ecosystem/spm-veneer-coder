@@ -10,21 +10,16 @@ Rather than acting as a generic conversational LLM, `veneer-coder` is designed a
 
 ```text
 spm-veneer-coder/
-├── train.py              # CLI entry point for training & dataset compilation
-├── agent.py              # Self-correcting interactive CLI agent wrapper
-├── subagent_cli.py       # Programmatic JSON delegation interface for parent agents
 ├── pyproject.toml        # Package definition and dependencies
-├── scripts/              # Helper automation scripts
-│   ├── scaffold_env.py   # Automated environment scaffolder
-│   └── workspace_indexer.py # Workspace AST context summarizer
+├── README.md             # Project documentation
+├── in/                   # Grounded training source datasets & spec references
+│   ├── veneer-spec-reference.md
+│   └── dataset/
 ├── presets/              # Versioned training configuration profiles
 │   ├── qwen2.5-coder-0.5b.yaml
 │   ├── qwen2.5-coder-1.5b.yaml
 │   ├── qwen2.5-coder-7b.yaml
 │   └── llama3-8b.yaml
-├── in/                   # Grounded training source datasets & spec references
-│   ├── veneer-spec-reference.md
-│   └── dataset/
 ├── veneer_coder/         # Subagent core engine package
 │   ├── __init__.py
 │   ├── agent.py          # Strict self-correction execution loop
@@ -32,6 +27,12 @@ spm-veneer-coder/
 │   ├── extraction.py     # Robust code block extractors
 │   ├── ollama.py         # Ollama HTTP API client
 │   └── workspace.py      # Workspace indexer logic
+├── scripts/              # Executable CLI scripts
+│   ├── train.py          # CLI entry point for training & dataset compilation
+│   ├── agent.py          # Self-correcting interactive CLI agent wrapper
+│   ├── subagent_cli.py   # Programmatic JSON delegation interface for parent agents
+│   ├── scaffold_env.py   # Automated environment scaffolder
+│   └── workspace_indexer.py # Workspace AST context summarizer
 ├── tests/                # Unit and golden evaluation test suites
 │   ├── test_presets_and_train.py
 │   ├── test_evals.py
@@ -63,24 +64,24 @@ pip install -e ".[dev]"
 ### 1. Recompiling the Dataset
 Rebuilds `dataset.jsonl` from the authoritative spec reference document and dataset cases in `in/`:
 ```bash
-python train.py compile-dataset --preset presets/qwen2.5-coder-1.5b.yaml --output dataset.jsonl
+python scripts/train.py compile-dataset --preset presets/qwen2.5-coder-1.5b.yaml --output dataset.jsonl
 ```
 
 ### 2. Listing Presets
 View all available configuration presets:
 ```bash
-python train.py --help
+python scripts/train.py --help
 ```
 
 ### 3. Training a Model
 To run fine-tuning using a preset profile:
 ```bash
-python train.py train --preset presets/qwen2.5-coder-1.5b.yaml
+python scripts/train.py train --preset presets/qwen2.5-coder-1.5b.yaml
 ```
 
 To dry-run and validate configuration resolution without requiring GPU/model loading:
 ```bash
-python train.py train --preset presets/qwen2.5-coder-1.5b.yaml --dry-run
+python scripts/train.py train --preset presets/qwen2.5-coder-1.5b.yaml --dry-run
 ```
 
 ---
@@ -120,18 +121,18 @@ ollama create veneer-coder -f outputs/qwen2.5-coder-1.5b/v1/gguf_gguf/Modelfile
 ```
 
 ### 2. Invoking the Interactive Agent
-Use `agent.py` to generate Veneer Spec code with strict compilation validation:
+Use `scripts/agent.py` (or installed `veneer-coder-agent`) to generate Veneer Spec code with strict compilation validation:
 ```bash
-python agent.py "Reconstruct the forum feed: map #forum-posts -> UiTableListPage"
+python scripts/agent.py "Reconstruct the forum feed: map #forum-posts -> UiTableListPage"
 ```
 
 If compilation fails, `agent.py` feeds compiler diagnostics back to the model for auto-correction. Reaching max retries without successful compilation raises an explicit error rather than returning invalid code.
 
 ### 3. Subagent Delegation (JSON Protocol Interface)
-For automated subagent delegation from parent agents, use `subagent_cli.py`:
+For automated subagent delegation from parent agents, use `scripts/subagent_cli.py`:
 
 ```bash
-python subagent_cli.py --input-json '{"task": "Map search", "html_path": "page.html", "env_dir": "site-x"}'
+python scripts/subagent_cli.py --input-json '{"task": "Map search", "html_path": "page.html", "env_dir": "site-x"}'
 ```
 
 #### Input JSON Schema

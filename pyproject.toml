@@ -26,6 +26,10 @@ dev = [
     "unsloth",
 ]
 
+[project.scripts]
+veneer-coder-train = "spm_finetune.cli.main:main"
+veneer-coder-agent = "veneer_coder.agent:main"
+
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["veneer_coder*"]
