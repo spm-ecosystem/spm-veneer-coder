@@ -20,9 +20,21 @@ strategy:
 
 dataset:
   path: "in"
-  format: "veneer-composite"
+  format: "composite"
   mapping:
-    messages: "messages"
+    subsets:
+      - path: "veneer-spec-reference.md"
+        format: "spec-doc"
+        mapping:
+          language_name: "Veneer Spec (.vnr)"
+          compiler_name: "spm-cli"
+          output_format: "manifest.json"
+          code_language: "vnr"
+          skip_headings:
+            - "17."
+            - "17. Common Errors, Anti-Patterns & Fixes"
+      - path: "dataset"
+        format: "markdown"
 
 backend:
   name: "unsloth"

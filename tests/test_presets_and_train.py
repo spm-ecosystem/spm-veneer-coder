@@ -40,7 +40,7 @@ def test_preset_loading_and_validation(preset_name):
     req = load_preset_with_overrides(str(preset_path))
     assert req.model.repository
     assert req.dataset.path == "in"
-    assert req.dataset.format == "veneer-composite"
+    assert req.dataset.format == "composite"
     assert req.backend.name == "unsloth"
     assert req.strategy.type == "lora"
     assert req.output_dir.startswith("outputs/")
