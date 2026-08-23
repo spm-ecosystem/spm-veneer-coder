@@ -5,9 +5,10 @@ Self-correcting agent execution loop.
 from __future__ import annotations
 
 import sys
-from veneer_coder.compiler import ValidationStatus, compile_vnr
-from veneer_coder.extraction import extract_vnr_code
+from veneer_coder.compiler import ValidationStatus, validate_vnr_semantics
+from veneer_coder.extraction import extract_code_block, extract_vnr_code
 from veneer_coder.ollama import query_ollama
+from veneer_coder.schema import get_grounding_prompt
 
 
 class VeneerAgentError(RuntimeError):
@@ -20,50 +21,61 @@ def run_agent(
     model: str = "veneer-coder",
     max_iterations: int = 3,
     strict: bool = True,
-) -> str:
+    sample_html: str | None = None,
+    target_components: list[str] | None = None,
+    require_css: bool = False,
+) -> dict[str, str] | str:
     """
-    Executes a self-correcting generation loop.
-    
-    If strict is True (default), reaching max_iterations without successful compilation
-    raises a VeneerAgentError, ensuring invalid code is never returned as success.
+    Executes a self-correcting generation loop with schema grounding, semantic validation,
+    and CSS extraction.
     """
     print(f"[Veneer Agent] Analyzing task: {task_prompt[:60]}...", file=sys.stderr)
+
+    grounding_context = get_grounding_prompt(task_prompt, target_components)
+    schema_prefix = f"\n\nComponent Schema Grounding:\n{grounding_context}\n" if grounding_context else ""
 
     current_prompt = (
         f"Generate the Veneer Spec (.vnr) code to satisfy the following request. "
         f"Make sure to use correct syntax like 'customStyles {{ }}' blocks, "
-        f"nested 'child' declarations, and correctly-formed extractor pipes:\n\n{task_prompt}"
+        f"nested 'child' declarations, and correctly-formed extractor pipes:{schema_prefix}\n\n{task_prompt}"
     )
 
     last_err_msg = ""
     vnr_code = ""
+    css_code = ""
 
     for iteration in range(1, max_iterations + 1):
         print(f"[Veneer Agent] Querying model {model} (Iteration {iteration}/{max_iterations})...", file=sys.stderr)
         response = query_ollama(current_prompt, model)
         vnr_code = extract_vnr_code(response)
+        css_code = extract_code_block(response, "css")
 
-        print(f"[Veneer Agent] Validating syntax via spm-cli...", file=sys.stderr)
-        status, err_msg = compile_vnr(vnr_code)
+        if require_css and not css_code and iteration < max_iterations:
+            print("[Veneer Agent] CSS block required but missing in output. Retrying...", file=sys.stderr)
+            current_prompt += "\n\nError: Please also provide a ```css ... ``` block for custom styles."
+            continue
+
+        print(f"[Veneer Agent] Validating syntax and semantics via spm-cli...", file=sys.stderr)
+        status, err_msg = validate_vnr_semantics(vnr_code, sample_html=sample_html)
 
         if status == ValidationStatus.VALID:
-            print("[Veneer Agent] Compilation check passed!", file=sys.stderr)
-            return vnr_code
+            print("[Veneer Agent] Compilation and semantic check passed!", file=sys.stderr)
+            return {"vnr": vnr_code, "css": css_code} if require_css else vnr_code
         elif status == ValidationStatus.UNAVAILABLE:
             print(f"[Veneer Agent] Compiler unavailable: {err_msg}", file=sys.stderr)
             if strict:
                 raise VeneerAgentError(f"Compilation validation unavailable: {err_msg}")
-            return vnr_code
+            return {"vnr": vnr_code, "css": css_code} if require_css else vnr_code
         else:
             # ValidationStatus.INVALID
             last_err_msg = err_msg
-            print(f"[Veneer Agent] Compiler error detected:\n{err_msg}", file=sys.stderr)
+            print(f"[Veneer Agent] Validation error detected:\n{err_msg}", file=sys.stderr)
 
             if iteration < max_iterations:
                 current_prompt = (
-                    f"The following Veneer Spec code failed compilation with spm-cli:\n\n"
+                    f"The following Veneer Spec code failed validation:\n\n"
                     f"```vnr\n{vnr_code}\n```\n\n"
-                    f"Compiler Error Diagnostic:\n{err_msg}\n\n"
+                    f"Validation Error Diagnostic:\n{err_msg}\n\n"
                     f"Please fix the Veneer Spec code for the original request: '{task_prompt}' "
                     f"and return only the valid ```vnr block."
                 )
@@ -77,4 +89,4 @@ def run_agent(
         raise VeneerAgentError(error_detail)
 
     print(f"[Veneer Agent] WARNING: Strict validation disabled. Returning unvalidated code.", file=sys.stderr)
-    return vnr_code
+    return {"vnr": vnr_code, "css": css_code} if require_css else vnr_code
